@@ -403,19 +403,24 @@ const CHARS=[
  {id:'fame',name:'FAME FAIELLA',sub:'Fame Records · Cape Coral',perk:'Home turf · +10% score',p:{score:1.1}},
  {id:'ice',name:'FRESH KID ICE',sub:'Chinaman Records · Miami bass legend',tribute:true,perk:'Legend · +15% coins',p:{coin:1.15}},
  {id:'palm',artist:true,name:'LIL PALMETTO',sub:'Florida bounce · Fame Records',perk:'Magnet lasts +4s',p:{magnet:4},look:{hoodie:'#3ddc97',shade:'#22a46c',text:'#0b2a1c',label:'PALM',skin:'#8d5a3b',hat:true,cap:'#0b2a1c',pants:'#1c2a40',hair:'#120a06'}},
- {id:'nova',artist:true,name:'NOVA REIGN',sub:'R&B singer · Fame Records',perk:'2X Coins lasts +4s',p:{dbl:4},look:{hoodie:'#ff7ac3',shade:'#c94b92',text:'#ffffff',label:'NOVA',skin:'#f1c6a0',hat:false,bun:true,hair:'#5a2a12',pants:'#2b1838'}},
+ {id:'nova',artist:true,name:'NOVA REIGN',sub:'R&B singer · Fame Records',perk:'2X Coins lasts +4s',p:{dbl:4},look:{model:'michelle',hoodie:'#ff7ac3',shade:'#c94b92',text:'#ffffff',label:'NOVA',skin:'#f1c6a0',hat:false,bun:true,hair:'#5a2a12',pants:'#2b1838'}},
  {id:'bricks',artist:true,name:'BRICKS MERCADO',sub:'Street rap · Fame Records',perk:'Starts every run on a board',p:{board:12},look:{hoodie:'#ff9f43',shade:'#c2701e',text:'#1a0b2e',label:'BRIX',skin:'#c68a5e',hat:true,cap:'#1a0b2e',pants:'#2a2a2a',hair:'#111'}},
  {id:'saint',artist:true,name:'SAINT CORAL',sub:'Melodic trap · Fame Records',perk:'Jumps 12% higher',p:{jump:1.12},look:{hoodie:'#54a0ff',shade:'#2f6fc4',text:'#ffffff',label:'SAINT',skin:'#6b4430',hat:false,flat:true,hair:'#111',pants:'#141c33',glow:'#9fd0ff'}},
+ {id:'snoop',legend:true,name:'SNOOP DOGG',sub:'Long Beach, California · West Coast legend',perk:'Laid back · magnet lasts +5s',p:{magnet:5},unlockLv:'us-CA',cost:6000,look:{hoodie:'#3a5a8a',shade:'#2a4268',text:'#ffffff',label:'SNOOP',skin:'#7a4a30',hat:false,braids:true,hair:'#141010',pants:'#c9b28a',stripe:'#ffffff',sy:1.07,sx:.95,shoes:'#ffffff'}},
+ {id:'biggie',legend:true,tribute2:true,name:'THE NOTORIOUS B.I.G.',sub:'Brooklyn, New York · 1972 – 1997',perk:'King of NY · +20% score',p:{score:1.2},unlockLv:'us-NY',cost:8000,look:{hoodie:'#b8322a',shade:'#7a1f1a',text:'#ffd23f',label:'BIGGIE',skin:'#4a2c1e',hat:false,kangol:true,cap:'#1a1a1a',hair:'#111',pants:'#1c1c22',sx:1.2,sy:1,chainBig:true}},
+ {id:'pac',legend:true,tribute2:true,name:'2PAC',sub:'East Harlem to the West Coast · 1971 – 1996',perk:'Ride or die · jumps 15% higher',p:{jump:1.15},unlockLv:'us-MD',cost:8000,look:{hoodie:'#f2f2f2',shade:'#cfcfcf',text:'#1a1a1a',label:'2PAC',skin:'#6b4430',hat:false,bandana:'#1f4fa0',hair:'#111',pants:'#2f4a7a',noShades:true}},
+ {id:'em',legend:true,name:'EMINEM',sub:'Detroit, Michigan · battle-rap legend',perk:'Lose yourself · on-beat bonus x2',p:{beat:2},unlockLv:'us-MI',cost:7000,look:{hoodie:'#9a9aa2',shade:'#6e6e76',text:'#111111',label:'EMINEM',skin:'#f1c6a0',hat:false,hair:'#f0dc9a',pants:'#3a4f75',noShades:true,noChain:true}},
  {id:'tidal',artist:true,name:'YUNG TIDAL',sub:'Pop-rap · Fame Records',perk:'Jetpack lasts +4s',p:{jet:4},look:{hoodie:'#c56cf0',shade:'#8f44b8',text:'#fff3b0',label:'TIDE',skin:'#e9b896',hat:true,cap:'#fff3b0',pants:'#22163a',hair:'#3a2414'}},
 ];
 const curChar=()=>CHARS.find(c=>c.id===S.char)||CHARS[0];
 const perk=()=>curChar().p||{};
-const charLocked=c=>!!(c.artist&&!S.artists[c.id]);
+const legendOwned=c=>!!((S.legends||{})[c.id]||(c.unlockLv&&S.levels&&S.levels[c.unlockLv]));
+const charLocked=c=>!!((c.artist&&!S.artists[c.id])||(c.legend&&!legendOwned(c)));
 const ICE_LOOK={skin:'#d9a57c',skinShade:'#b9845d',hair:'#0d0d10',shoes:'#ffffff',shoeAccent:'#ffd23f',capLogo:'#ffd23f',chain:'#ffd34d',shades:'#1a1206',
   hoodie:'#b3121f',hoodieShade:'#7d0c15',hoodieText:'#ffd23f',cap:null,pants:'#111114',pantsShade:'#07070a',glow:'#ffd23f',label:'ICE',pendant:'ICE',stripe:'#ffd23f',hat:false,flat:true};
 let LOOK={},DECK=DECKS[0];
 function applyLook(){const cc=CHARS.find(x=>x.id===S.char);
-  if(cc&&cc.look){const k=cc.look;LOOK=Object.assign({},BASE_LOOK,{hoodie:k.hoodie,hoodieShade:k.shade,hoodieText:k.text,cap:k.cap||null,pants:k.pants,pantsShade:k.pants,glow:k.glow||null,label:k.label,pendant:k.label[0],hat:!!k.hat,flat:!!k.flat,bun:!!k.bun,skin:k.skin,skinShade:k.skin,hair:k.hair||'#111'});DECK=DECKS.find(x=>x.id===S.deck)||DECKS[0];if(window.__engineReady)rebuildChar();return;}
+  if(cc&&cc.look){const k=cc.look;LOOK=Object.assign({},BASE_LOOK,{hoodie:k.hoodie,hoodieShade:k.shade,hoodieText:k.text,cap:k.cap||null,pants:k.pants,pantsShade:k.pants,glow:k.glow||null,label:k.label,pendant:k.label[0],hat:!!k.hat,flat:!!k.flat,bun:!!k.bun,skin:k.skin,skinShade:k.skin,hair:k.hair||'#111',model:k.model||null,braids:!!k.braids,kangol:!!k.kangol,bandana:k.bandana||null,noShades:!!k.noShades,noChain:!!k.noChain,chainBig:!!k.chainBig,sx:k.sx||1,sy:k.sy||1});if(k.stripe)LOOK.stripe=k.stripe;if(k.shoes)LOOK.shoes=k.shoes;DECK=DECKS.find(x=>x.id===S.deck)||DECKS[0];if(window.__engineReady)rebuildChar();return;}
   if(S.char==='ice'){LOOK=Object.assign({},ICE_LOOK);DECK=DECKS.find(x=>x.id===S.deck)||DECKS[0];if(window.__engineReady)rebuildChar();return;}const o=OUTFITS.find(x=>x.id===S.outfit)||OUTFITS[0];LOOK=Object.assign({},BASE_LOOK,{hoodie:o.hoodie,hoodieShade:o.shade,hoodieText:o.text,cap:o.cap,pants:o.pants,pantsShade:o.pantsShade,glow:o.glow||null,label:'FAME',pendant:'F',hat:true});if(o.chain)LOOK.chain=o.chain;DECK=DECKS.find(x=>x.id===S.deck)||DECKS[0];if(window.__engineReady)rebuildChar();}
 applyLook();
 
@@ -1173,7 +1178,8 @@ function syncWorld(){
 // ---------- character ----------
 let CH=null;
 // ---- motion-captured human base (three.js example model "Xbot", Mixamo rig) ----
-let XBOT=null;
+let XBOT=null;const BASES={},BASE_URL={michelle:'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/Michelle.glb'};
+function loadBase(n){if(BASES[n]||BASES[n+'_loading']||!BASE_URL[n])return;BASES[n+'_loading']=1;new GLTFLoader().load(BASE_URL[n],g=>{BASES[n]=g;if(LOOK.model===n)rebuildChar();},undefined,()=>{});}
 new GLTFLoader().load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/Xbot.glb',g=>{XBOT=g;window.__xbot=true;rebuildChar();PAPS.forEach(p=>{scene.remove(p.g);});PAPS.length=0;},undefined,()=>{window.__xbot=false;});
 function regionMaterial(L,glow){
   const m=new THREE.MeshStandardMaterial({roughness:.62,metalness:.05,envMapIntensity:.6});
@@ -1197,37 +1203,45 @@ vec3 region(vec3 p){float y=p.y,ax=abs(p.x);
   return m;}
 function attachTo(bone,obj,ws){obj.scale.multiplyScalar(1/ws);bone.add(obj);}
 function buildXChar(){
-  const L=LOOK;const root=new THREE.Group();const model=SkeletonUtils.clone(XBOT.scene);model.rotation.y=Math.PI;root.add(model);
+  const L=LOOK;if(L.model)loadBase(L.model);const base=(L.model&&BASES[L.model])||XBOT;const real=base!==XBOT;const root=new THREE.Group();const model=SkeletonUtils.clone(base.scene);model.rotation.y=Math.PI;model.scale.set(L.sx||1,L.sy||1,L.sx||1);root.add(model);
   const body=regionMaterial(L,L.glow);const joints=new THREE.MeshStandardMaterial({color:L.hoodieShade,roughness:.55,metalness:.1});
-  model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material=/Joints/.test(o.material.name)?joints:body;}});
+  model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;if(!real)o.material=/Joints/.test(o.material.name)?joints:body;}});
   model.updateMatrixWorld(true);
   const bone=n=>model.getObjectByName('mixamorig'+n)||model.getObjectByName('mixamorig:'+n);
   const head=bone('Head'),neck=bone('Neck'),spine=bone('Spine2');
   const ws=new THREE.Vector3();head.getWorldScale(ws);const s=ws.x;
   const gold=mat(L.chain,{r:.2,m:1,e:L.chain,ei:.2}),shade=new THREE.MeshStandardMaterial({color:'#0b0b10',roughness:.05,metalness:.9,envMapIntensity:2}),hair=mat(L.hair,{r:.9}),capM=mat(L.cap||'#111',{r:.7});
   const H=new THREE.Group();
-  for(const sd of [-1,1]){const l=new THREE.Mesh(G.rbox,shade);l.scale.set(.075,.042,.02);l.position.set(sd*.042,.075,.105);H.add(l);}
-  H.add(box(L.label==='ICE'?gold:shade,.03,.008,.012,0,.083,.11));
+  if(!L.noShades){for(const sd of [-1,1]){const l=new THREE.Mesh(L.braids?G.sph:G.rbox,shade);if(L.braids)l.scale.set(.038,.032,.012);else l.scale.set(.075,.042,.02);l.position.set(sd*.042,.075,.105);H.add(l);}
+  H.add(box(L.label==='ICE'?gold:shade,.03,.008,.012,0,.083,.11));}
   if(L.label==='ICE'){const fr=box(gold,.17,.006,.012,0,.098,.108);H.add(fr);}
   if(L.hat){const cap=new THREE.Mesh(new THREE.SphereGeometry(1,22,10,0,Math.PI*2,0,Math.PI/2),capM);cap.scale.set(.112,.085,.12);cap.position.set(0,.13,.0);H.add(cap);
     const brim=box(capM,.16,.012,.13,0,.135,-.11);H.add(brim);H.add(box(mat(L.capLogo,{e:L.capLogo,ei:.4}),.04,.025,.005,0,.16,.115));}
+  else if(L.kangol){const kg=new THREE.Mesh(new THREE.SphereGeometry(1,22,10,0,Math.PI*2,0,Math.PI/1.9),capM);kg.scale.set(.12,.1,.125);kg.position.set(0,.125,0);H.add(kg);const rim=new THREE.Mesh(new THREE.CylinderGeometry(.14,.145,.02,26),capM);rim.position.set(0,.125,0);H.add(rim);}
+  else if(L.bandana){const bm=mat(L.bandana,{r:.8});const bd=new THREE.Mesh(new THREE.SphereGeometry(1,22,10,0,Math.PI*2,0,Math.PI/2),bm);bd.scale.set(.108,.075,.114);bd.position.set(0,.135,0);H.add(bd);
+    const band=new THREE.Mesh(new THREE.TorusGeometry(.108,.014,8,28),bm);band.rotation.x=Math.PI/2;band.position.set(0,.14,0);H.add(band);const knot=new THREE.Mesh(G.sph,bm);knot.scale.set(.03,.022,.02);knot.position.set(0,.15,.115);H.add(knot);
+    for(const sd of [-1,1]){const t=box(bm,.02,.05,.012,sd*.022,.115,.118);t.rotation.z=sd*.5;H.add(t);}}
+  else if(L.braids){const hh=new THREE.Mesh(G.sph,hair);hh.scale.set(.106,.085,.11);hh.position.set(0,.13,-.005);H.add(hh);
+    for(let i=0;i<9;i++){const a=-1.25+i*(2.5/8);const br=new THREE.Mesh(G.cyl,hair);br.scale.set(.011,.2,.011);br.position.set(Math.sin(a)*.1,.02,Math.cos(a)*-.07-.02);br.rotation.x=.15;H.add(br);}}
   else if(L.flat){H.add(box(hair,.2,.1,.2,0,.2,0));}
   else if(L.bun){const b=new THREE.Mesh(G.sph,hair);b.scale.setScalar(.06);b.position.set(0,.2,-.06);H.add(b);const hh=new THREE.Mesh(G.sph,hair);hh.scale.set(.105,.1,.11);hh.position.set(0,.12,-.01);H.add(hh);}
   else{const hh=new THREE.Mesh(G.sph,hair);hh.scale.set(.104,.08,.108);hh.position.set(0,.135,-.005);H.add(hh);}
-  attachTo(head,H,s);
-  const N=new THREE.Group();const ch=new THREE.Mesh(new THREE.TorusGeometry(.085,.009,8,28),gold);ch.rotation.x=Math.PI/2.3;ch.position.set(0,-.02,.03);N.add(ch);
-  const pd=new THREE.Mesh(new THREE.CylinderGeometry(.028,.028,.008,20),gold);pd.rotation.x=Math.PI/2;pd.position.set(0,-.1,.11);N.add(pd);
+  if(!real)attachTo(head,H,s);
+  const N=new THREE.Group();const ch=new THREE.Mesh(new THREE.TorusGeometry(L.chainBig?.1:.085,L.chainBig?.016:.009,8,28),gold);ch.rotation.x=Math.PI/2.3;ch.position.set(0,-.02,.03);
+  const pd=new THREE.Mesh(new THREE.CylinderGeometry(L.chainBig?.045:.028,L.chainBig?.045:.028,.01,20),gold);pd.rotation.x=Math.PI/2;pd.position.set(0,L.chainBig?-.13:-.1,.11);
+  if(!L.noChain){N.add(ch);N.add(pd);}
   if(L.label==='ICE'){const c2=ch.clone();c2.scale.setScalar(1.25);c2.position.set(0,-.05,.04);N.add(c2);}
   attachTo(neck,N,s);
   const B=new THREE.Group();const back=new THREE.Mesh(new THREE.PlaneGeometry(.3,.3),new THREE.MeshStandardMaterial({map:labelTex(L.label,L.hoodieText,L.label==='ICE'?'FRESH KID':null),transparent:true,roughness:.7,depthWrite:false}));back.position.set(0,.02,-.135);back.rotation.y=Math.PI;B.add(back);
   const fr=new THREE.Mesh(new THREE.PlaneGeometry(.1,.1),new THREE.MeshStandardMaterial({map:labelTex(L.label==='ICE'?'ICE':(L.pendant||'F'),L.hoodieText),transparent:true,depthWrite:false}));fr.position.set(.07,.06,.125);B.add(fr);
   const jet=new THREE.Group();const flames=[];for(const sx of [-.08,.08]){const c=new THREE.Mesh(G.rbox,mat('#c9c9d6',{r:.3,m:.8}));c.scale.set(.09,.28,.09);c.position.set(sx,.0,-.2);jet.add(c);
     const fl=new THREE.Mesh(new THREE.ConeGeometry(.045,.3,12),new THREE.MeshBasicMaterial({color:'#ffb03d',transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));fl.rotation.x=Math.PI;fl.position.set(sx,-.28,-.2);jet.add(fl);flames.push(fl);}
+  if(real){back.visible=false;fr.visible=false;}
   B.add(jet);attachTo(spine,B,s);
   const board=new THREE.Group();const deck=new THREE.Mesh(G.rbox,[mat(DECK.edge,{e:DECK.glow,ei:4}),mat(DECK.edge,{e:DECK.glow,ei:4}),new THREE.MeshStandardMaterial({map:deckTex(),roughness:.4}),mat('#1a0b2e'),mat(DECK.edge,{e:DECK.glow,ei:4}),mat(DECK.edge,{e:DECK.glow,ei:4})]);
   deck.scale.set(.62,.07,1.45);deck.castShadow=true;board.add(deck);
   const under=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:DECK.glow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.9}));under.scale.set(1.6,.5,1);under.position.y=-.12;board.add(under);root.add(board);
-  const mixer=new THREE.AnimationMixer(model);const A={};for(const c of XBOT.animations)A[c.name]=mixer.clipAction(c);
+  const mixer=new THREE.AnimationMixer(model);const A={};for(const c of XBOT.animations)A[c.name]=mixer.clipAction(c);if(real)tame(model);
   ['idle','run','walk'].forEach(n=>{if(A[n]){A[n].play();A[n].setEffectiveWeight(0);}});if(A.idle)A.idle.setEffectiveWeight(1);
   CH={x:true,root,model,mixer,A,board,jet,flames,w:{idle:1,run:0,walk:0}};tame(root);body.envMapIntensity=.12;scene.add(root);
 }
@@ -1241,7 +1255,7 @@ function animXChar(dt){
   c.mixer.update(mode==='pause'?0:dt*(R.alive||inMenu?1:timeScale));
   let y=inMenu?0:R.y,x=inMenu?0:R.x;let bob=0;if(board)bob=.12+Math.sin(T*6)*.03;
   c.root.position.set(x,y+bob,-PZ);
-  c.model.scale.y=lr(c.model.scale.y,roll?.55:1,Math.min(1,dt*16));
+  {const by=(LOOK.sy||1);c.model.scale.y=lr(c.model.scale.y,roll?.55*by:by,Math.min(1,dt*16));}
   c.model.rotation.x=lr(c.model.rotation.x,roll?.35:(air?-.12:0),Math.min(1,dt*10));
   c.root.rotation.y=lr(c.root.rotation.y,inMenu?Math.sin(T*.7)*.3:0,k*.5);
   c.root.rotation.z=lr(c.root.rotation.z,inMenu?0:(R.x-laneX(R.lane))*.35+(board?Math.sin(T*2)*.05:0),Math.min(1,dt*14));
@@ -1479,7 +1493,10 @@ function updateHudStatic(){$('hBoardN').textContent=S.boards;$('hMult').textCont
 
 // ---------- Flow ----------
 function startRun(){
-  if(charLocked(curChar())){toastQuick('🔒 Sign this artist in the Label tab first');sfxBonk();return;}
+  if(charLocked(curChar())){const c=curChar();
+    if(c.legend){const lvn=(lvById(c.unlockLv)||{}).name;openModal(`<h2>UNLOCK LEGEND</h2><div style="margin:12px 0;font-size:15px;line-height:1.5"><b>${c.name}</b><br><span style="opacity:.8">${c.sub}</span><br><br>★ ${c.perk}<br><br>Clear <b>${lvn}</b> on the World Tour to unlock for free, or unlock now.</div><button class="btn" id="buyLegend" ${S.coins<c.cost?'disabled':''}>UNLOCK · ${fmt(c.cost)} coins</button><div style="font-size:12px;opacity:.65;margin-top:8px">You have ${fmt(S.coins)} coins</div>`);
+      const bb=$('buyLegend');if(bb)bb.onclick=()=>{if(S.coins<c.cost)return;S.coins-=c.cost;S.legends=S.legends||{};S.legends[c.id]=true;save();sfxJingle();confetti(80);toast(`👑 <b>${c.name} unlocked!</b> ${c.perk}`);toMenu();refreshChar(true);};return;}
+    toastQuick('🔒 Sign this artist in the Label tab first');sfxBonk();return;}
   if(!S.story){S.story=true;save();playStory(startRun);return;}
   initAudio();startMusic();
   sfxClick();
@@ -1557,7 +1574,7 @@ $('nowplaying').onclick=e=>{e.stopPropagation();initAudio();
 setMuted(S.muted);
 
 // character select
-function refreshChar(anim){const c=CHARS.find(x=>x.id===S.char)||CHARS[0];const lk=charLocked(c);$('charName').classList.toggle('locked',lk);$('charName').querySelector('b').textContent=c.name;$('charName').querySelector('small').textContent=c.sub;$('charName').querySelector('em').textContent=lk?'🔒 Sign '+c.name.split(' ')[0]+' in the Label tab to unlock':'★ '+c.perk;$('playBtn').textContent=lk?'🔒 LOCKED':'▶ RUN';$('tributeBtn').classList.toggle('on',!!c.tribute);
+function refreshChar(anim){const c=CHARS.find(x=>x.id===S.char)||CHARS[0];const lk=charLocked(c);$('charName').classList.toggle('locked',lk);$('charName').querySelector('b').textContent=c.name;$('charName').querySelector('small').textContent=c.sub;const lvn=c.unlockLv?(lvById(c.unlockLv)||{}).name:'';$('charName').querySelector('em').textContent=lk?(c.legend?`🔒 Clear ${lvn} on the World Tour — or unlock for ${fmt(c.cost)} coins`:'🔒 Sign '+c.name.split(' ')[0]+' in the Label tab to unlock'):'★ '+c.perk;$('playBtn').textContent=lk?(c.legend?'🔓 UNLOCK':'🔒 LOCKED'):'▶ RUN';$('tributeBtn').classList.toggle('on',!!(c.tribute||c.tribute2));$('tributeBtn').textContent=c.tribute2?'🕯️ In memory · '+c.sub.split('·')[1].trim():'🕯️ In memory · 1964–2017';
   if(anim)rebuildChar();}
 function switchChar(d){const i=CHARS.findIndex(x=>x.id===S.char);S.char=CHARS[(i+d+CHARS.length)%CHARS.length].id;applyLook();refreshChar(true);sfxClick();save();
   const c=CHARS.find(x=>x.id===S.char);
@@ -1569,7 +1586,8 @@ function tributeHTML(){return `<div class="candle">🕯️</div><h2>IN MEMORY</h
   <div class="tribute">Born in Port of Spain, Trinidad and Tobago, Chris Wong Won served in the U.S. Air Force before co-founding <b>2 Live Crew</b> and helping put <b>Miami bass</b> on the map. He’s remembered as one of the first prominent Asian American rappers — a true pioneer.<br><br>
   He released his solo album <i>The Chinaman</i> in 1992, built his own label, <b>Chinaman Records</b>, and helped bring new talent up — a mentor to <b>Fame Faiella</b> and many others.<br><br>
   This game is dedicated to his memory. Rest in power, legend. 🙏</div>`;}
-$('tributeBtn').onclick=()=>{openModal(tributeHTML());confetti(0);};
+const TRIB2={biggie:'Christopher “Biggie” Wallace — The Notorious B.I.G. — came out of Bedford-Stuyvesant, Brooklyn and became one of the most celebrated storytellers in hip-hop history. His flow, humor and vivid detail still shape rap today.',pac:'Tupac Shakur — 2Pac — was a rapper, poet and actor whose music spoke on struggle, loyalty and hope. Born in East Harlem and raised between Baltimore and California, his voice remains one of the most influential in music.'};
+$('tributeBtn').onclick=()=>{const c=curChar();if(c.tribute2){openModal(`<div class="candle">🕯️</div><h2>IN MEMORY</h2><div class="years">${c.name}<br><span style="font-size:15px;color:#fff">${c.sub.split('·')[1].trim()}</span></div><div class="tribute">${TRIB2[c.id]}<br><br>Rest in power, legend. 🙏</div>`);return;}openModal(tributeHTML());};
 // modal screens
 function openModal(html){$('mBody').innerHTML=html;show('modal');sfxClick();}
 $('mClose').onclick=()=>{sfxClick();toMenu();};
@@ -1700,7 +1718,7 @@ function doAct(a,el){
 function buzz(ms){if(S.vib===false)return;try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}}
 // ---- on-beat jumps ----
 function beatJump(){if(!AC||!S.musicOn||S.muted)return;let hit=false;if(curTrack>=0){const bl=60/TRACKS[curTrack].bpm,now=AC.currentTime;const ph=((now-lastBeat)%bl+bl)%bl;hit=Math.min(ph,bl-ph)<.09;}else hit=songOnBeat();
-  if(hit){const b=50*S.mult;R.score+=b;R.beats++;S.beatsTotal=(S.beatsTotal||0)+1;toastQuick('🎵 ON BEAT! +'+b);buzz(15);const p=P(R.x,R.y+1.2,PZ);burst(p.x,p.y,'#ffd23f',14,220);fovKick+=2;}}
+  if(hit){const b=50*S.mult*(perk().beat||1);R.score+=b;R.beats++;S.beatsTotal=(S.beatsTotal||0)+1;toastQuick('🎵 ON BEAT! +'+b);buzz(15);const p=P(R.x,R.y+1.2,PZ);burst(p.x,p.y,'#ffd23f',14,220);fovKick+=2;}}
 // ---- paparazzi ----
 const PAPS=[];
 function buildPap(side){const g=new THREE.Group();const suit=mat('#23202c',{r:.7}),skin=mat('#d8a47c',{r:.6});
@@ -1820,6 +1838,7 @@ const ACH=[
  {id:'chase',ic:'📸',n:'Camera Shy',d:'Lose the paparazzi 5×',c:()=>(S.flags.escapes||0)>=5},
  {id:'drip',ic:'👕',n:'Drip Check',d:'Own 3 outfits',c:()=>S.owned.length>=3},
  {id:'radio',ic:'🎧',n:'Day One Fan',d:'Play Fame Radio',c:()=>!!S.flags.radio},
+ {id:'legend',ic:'👑',n:'Legendary',d:'Unlock a hip-hop legend',c:()=>CHARS.some(c=>c.legend&&legendOwned(c))},
  {id:'tour1',ic:'🗺️',n:'On Tour',d:'Clear a World Tour stop',c:()=>Object.keys(S.levels).length>=1},
  {id:'us10',ic:'🇺🇸',n:'Coast to Coast',d:'Clear 10 states',c:()=>LEVELS.filter(l=>l.region==='usa'&&S.levels[l.id]).length>=10},
  {id:'us50',ic:'🦅',n:'All 50',d:'Clear all 50 states',c:()=>LEVELS.filter(l=>l.region==='usa'&&S.levels[l.id]).length>=50},
@@ -1937,6 +1956,7 @@ function levelWin(){
   const reward=(first?150+LV.i*20:40)+stars*50;S.coins+=reward;S.total+=reward;R.lvReward=reward;R.lvStars=stars;
   bigText(LV.name.toUpperCase(),'★'.repeat(stars)+'☆'.repeat(3-stars)+' CLEARED');confetti(120);sfxJingle();flash=.6;cine(true);
   const nx=LEVELS.find(x=>x.region===LV.region&&x.i===LV.i+1);
+  const lg=CHARS.find(c=>c.legend&&c.unlockLv===LV.id);if(lg&&!(S.legends||{})[lg.id])setTimeout(()=>toast(`👑 <b>Legend unlocked: ${lg.name}!</b> Pick him on the character select.`),2600);
   save();
   setTimeout(()=>{R.alive=false;R.dead=0;mode='play';gameOver();
     $('oTitle').textContent=(LV.region==='usa'?'STATE':'COUNTRY')+' CLEARED!';

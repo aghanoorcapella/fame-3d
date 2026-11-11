@@ -354,6 +354,7 @@ import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {FBXLoader} from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 /* =====================================================================
    FAME THE GAME v2 — endless runner + music-label tycoon
@@ -403,7 +404,7 @@ const CHARS=[
  {id:'fame',name:'FAME FAIELLA',sub:'Fame Records · Cape Coral',perk:'Home turf · +10% score',p:{score:1.1}},
  {id:'ice',name:'FRESH KID ICE',sub:'Chinaman Records · Miami bass legend',tribute:true,perk:'Legend · +15% coins',p:{coin:1.15}},
  {id:'palm',artist:true,name:'LIL PALMETTO',sub:'Florida bounce · Fame Records',perk:'Magnet lasts +4s',p:{magnet:4},look:{hoodie:'#3ddc97',shade:'#22a46c',text:'#0b2a1c',label:'PALM',skin:'#8d5a3b',hat:true,cap:'#0b2a1c',pants:'#1c2a40',hair:'#120a06'}},
- {id:'nova',artist:true,name:'NOVA REIGN',sub:'R&B singer · Fame Records',perk:'2X Coins lasts +4s',p:{dbl:4},look:{model:'michelle',hoodie:'#ff7ac3',shade:'#c94b92',text:'#ffffff',label:'NOVA',skin:'#f1c6a0',hat:false,bun:true,hair:'#5a2a12',pants:'#2b1838'}},
+ {id:'nova',artist:true,name:'NOVA REIGN',sub:'R&B singer · Fame Records',perk:'2X Coins lasts +4s',p:{dbl:4},look:{hoodie:'#ff7ac3',shade:'#c94b92',text:'#ffffff',label:'NOVA',skin:'#f1c6a0',hat:false,bun:true,hair:'#5a2a12',pants:'#2b1838'}},
  {id:'bricks',artist:true,name:'BRICKS MERCADO',sub:'Street rap · Fame Records',perk:'Starts every run on a board',p:{board:12},look:{hoodie:'#ff9f43',shade:'#c2701e',text:'#1a0b2e',label:'BRIX',skin:'#c68a5e',hat:true,cap:'#1a0b2e',pants:'#2a2a2a',hair:'#111'}},
  {id:'saint',artist:true,name:'SAINT CORAL',sub:'Melodic trap · Fame Records',perk:'Jumps 12% higher',p:{jump:1.12},look:{hoodie:'#54a0ff',shade:'#2f6fc4',text:'#ffffff',label:'SAINT',skin:'#6b4430',hat:false,flat:true,hair:'#111',pants:'#141c33',glow:'#9fd0ff'}},
  {id:'snoop',legend:true,name:'SNOOP DOGG',sub:'Long Beach, California · West Coast legend',perk:'Laid back · magnet lasts +5s',p:{magnet:5},unlockLv:'us-CA',cost:6000,look:{hoodie:'#3a5a8a',shade:'#2a4268',text:'#ffffff',label:'SNOOP',skin:'#7a4a30',hat:false,braids:true,hair:'#141010',pants:'#c9b28a',stripe:'#ffffff',sy:1.07,sx:.95,shoes:'#ffffff'}},
@@ -1202,7 +1203,103 @@ vec3 region(vec3 p){float y=p.y,ax=abs(p.x);
   m.customProgramCacheKey=()=>'region'+L.skin+L.hoodie+L.pants+L.shoes+(L.stripe||'');
   return m;}
 function attachTo(bone,obj,ws){obj.scale.multiplyScalar(1/ws);bone.add(obj);}
+// ---- Realistic human avatars (Microsoft Rocketbox, MIT) + Mixamo mocap retargeting ----
+const RB_MAP={Hips:'Bip01_Pelvis',Spine:'Bip01_Spine',Spine1:'Bip01_Spine1',Spine2:'Bip01_Spine2',Neck:'Bip01_Neck',Head:'Bip01_Head',
+  LeftShoulder:'Bip01_L_Clavicle',LeftArm:'Bip01_L_UpperArm',LeftForeArm:'Bip01_L_Forearm',LeftHand:'Bip01_L_Hand',
+  RightShoulder:'Bip01_R_Clavicle',RightArm:'Bip01_R_UpperArm',RightForeArm:'Bip01_R_Forearm',RightHand:'Bip01_R_Hand',
+  LeftUpLeg:'Bip01_L_Thigh',LeftLeg:'Bip01_L_Calf',LeftFoot:'Bip01_L_Foot',LeftToeBase:'Bip01_L_Toe0',
+  RightUpLeg:'Bip01_R_Thigh',RightLeg:'Bip01_R_Calf',RightFoot:'Bip01_R_Foot',RightToeBase:'Bip01_R_Toe0'};
+const RB_CHAIN=[['LeftShoulder','LeftArm'],['LeftArm','LeftForeArm'],['LeftForeArm','LeftHand'],['RightShoulder','RightArm'],['RightArm','RightForeArm'],['RightForeArm','RightHand'],
+  ['LeftUpLeg','LeftLeg'],['LeftLeg','LeftFoot'],['LeftFoot','LeftToeBase'],['RightUpLeg','RightLeg'],['RightLeg','RightFoot'],['RightFoot','RightToeBase']];
+const AV={},AV_LOADING={};const AV_TEX=new THREE.TextureLoader();
+function avTex(u,srgb){const t=AV_TEX.load(u);if(srgb)t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;return t;}
+function retargetClip(srcScene,clip,tgt){
+  const src=SkeletonUtils.clone(srcScene);src.updateMatrixWorld(true);
+  const sb=n=>src.getObjectByName('mixamorig'+n),tb=n=>tgt.getObjectByName(n);
+  const keys=[];tgt.traverse(o=>{if(o.isBone){for(const k in RB_MAP)if(RB_MAP[k]===o.name&&sb(k))keys.push(k);}});
+  const Q=()=>new THREE.Quaternion(),V=()=>new THREE.Vector3();
+  const sBind={},tBind={},tLocal={};
+  for(const k of keys)tLocal[k]=tb(RB_MAP[k]).quaternion.clone();
+  // match rest poses: Rocketbox binds in an A-pose, Mixamo in a T-pose -> swing target limbs onto source directions
+  const wp=(o)=>o.getWorldPosition(V()),pq=Q(),wq=Q();
+  for(const [k,c] of RB_CHAIN){if(!keys.includes(k)||!sb(c)||!tb(RB_MAP[c]))continue;const b=tb(RB_MAP[k]);tgt.updateMatrixWorld(true);
+    const sd=wp(sb(c)).sub(wp(sb(k))).normalize(),td=wp(tb(RB_MAP[c])).sub(wp(b)).normalize();
+    const R=Q().setFromUnitVectors(td,sd);b.getWorldQuaternion(wq);wq.premultiply(R);b.parent.getWorldQuaternion(pq);b.quaternion.copy(pq.invert().multiply(wq));b.updateMatrixWorld(true);}
+  tgt.updateMatrixWorld(true);
+  for(const k of keys){sBind[k]=sb(k).getWorldQuaternion(Q());tBind[k]=tb(RB_MAP[k]).getWorldQuaternion(Q());}
+  for(const k of keys)tb(RB_MAP[k]).quaternion.copy(tLocal[k]);tgt.updateMatrixWorld(true);
+  const root=tb('Bip01'),rootLocal=root.position.clone(),rootW=root.getWorldPosition(V());
+  const sHip=sb('Hips').getWorldPosition(V()),ratio=(tb('Bip01_Pelvis').getWorldPosition(V()).y-tgt.getWorldPosition(V()).y)/Math.max(1e-4,sHip.y-src.getWorldPosition(V()).y);
+  const mixer=new THREE.AnimationMixer(src);const act=mixer.clipAction(clip);act.play();
+  const fps=30,n=Math.max(2,Math.round(clip.duration*fps)+1),times=new Float32Array(n);const vals={};keys.forEach(k=>vals[k]=new Float32Array(n*4));const pv=new Float32Array(n*3);
+  const q=Q(),pw=Q(),w=V();
+  for(let i=0;i<n;i++){const t=Math.min(clip.duration,i/fps);times[i]=t;mixer.setTime(t);src.updateMatrixWorld(true);
+    for(const k of keys){const b=tb(RB_MAP[k]);sb(k).getWorldQuaternion(q);q.multiply(sBind[k].clone().invert());q.multiply(tBind[k]);
+      b.parent.updateWorldMatrix(true,false);b.parent.getWorldQuaternion(pw);b.quaternion.copy(pw.invert().multiply(q));b.updateMatrixWorld(true);b.quaternion.toArray(vals[k],i*4);}
+    sb('Hips').getWorldPosition(w);w.sub(sHip);w.x*=.0;w.z=0;w.multiplyScalar(ratio).add(rootW);root.parent.updateWorldMatrix(true,false);root.parent.worldToLocal(w);w.toArray(pv,i*3);}
+  for(const k of keys)tb(RB_MAP[k]).quaternion.copy(tLocal[k]);root.position.copy(rootLocal);tgt.updateMatrixWorld(true);
+  const tracks=keys.map(k=>new THREE.QuaternionKeyframeTrack(RB_MAP[k]+'.quaternion',times,vals[k]));tracks.push(new THREE.VectorKeyframeTrack('Bip01.position',times,pv));
+  return new THREE.AnimationClip(clip.name,clip.duration,tracks);
+}
+function loadAvatar(key,cb){
+  if(AV[key]){cb&&cb(AV[key]);return;}if(AV_LOADING[key]){if(cb)AV_LOADING[key].push(cb);return;}AV_LOADING[key]=cb?[cb]:[];
+  fetch('avatars/'+key+'.fbx').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();}).then(buf=>{
+    const m=new FBXLoader().parse(buf,'');m.animations.length=0;
+    const P='avatars/'+key+'_';const tex={};
+    const get=(s,srgb)=>tex[s]||(tex[s]=avTex(P+s+'.webp',srgb));
+    m.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;
+      const ms=(Array.isArray(o.material)?o.material:[o.material]).map(om=>{const nm=(om.name||'').toLowerCase();
+        if(/opacity|hair/.test(nm))return new THREE.MeshStandardMaterial({name:'hair',map:get('hair',true),alphaTest:.42,side:THREE.DoubleSide,roughness:.7,metalness:0,envMapIntensity:.25});
+        const part=/head/.test(nm)?'head':'body';
+        return new THREE.MeshStandardMaterial({name:part,map:get(part,true),normalMap:get(part+'n',false),normalScale:new THREE.Vector2(.9,.9),roughness:part==='head'?.56:.78,metalness:0,envMapIntensity:.3});});
+      o.material=Array.isArray(o.material)?ms:ms[0];});
+    m.scale.setScalar(.01);m.updateMatrixWorld(true);
+    const av={scene:m,clips:{}};
+    if(XBOT)for(const c of XBOT.animations)if(/^(idle|run|walk)$/.test(c.name))av.clips[c.name]=retargetClip(XBOT.scene,c,m);
+    AV[key]=av;const l=AV_LOADING[key];delete AV_LOADING[key];l.forEach(f=>f(av));
+  }).catch(e=>{console.warn('avatar',key,e);AV_LOADING[key]=null;});
+}
+
+function avKey(){return S.char||'fame';}
+function buildAvChar(av){
+  const L=LOOK;const root=new THREE.Group();const model=new THREE.Group();model.rotation.y=Math.PI;model.scale.set(L.sx||1,L.sy||1,L.sx||1);root.add(model);
+  const body=SkeletonUtils.clone(av.scene);model.add(body);
+  const HIDE=new THREE.MeshBasicMaterial({visible:false});
+  body.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;if(L.bandana&&Array.isArray(o.material))o.material=o.material.map(m=>m.name==='hair'?HIDE:m);}});
+  root.updateMatrixWorld(true);
+  const bn=n=>body.getObjectByName(n),P=n=>{const b=bn(n);return b?b.getWorldPosition(new THREE.Vector3()):null;};
+  const head=bn('Bip01_Head'),spine=bn('Bip01_Spine2'),Hp=P('Bip01_Head'),Np=P('Bip01_Neck'),Sp=P('Bip01_Spine2');
+  const eL=P('Bip01_LEye'),eR=P('Bip01_REye');const E=(eL&&eR)?eL.clone().add(eR).multiplyScalar(.5):Hp.clone().add(new THREE.Vector3(0,.09,-.09));
+  const fix=(obj,bone)=>{root.add(obj);root.updateMatrixWorld(true);bone.attach(obj);return obj;};
+  const gold=mat(L.chain,{r:.18,m:1,e:L.chain,ei:.15}),shade=new THREE.MeshStandardMaterial({color:'#07070b',roughness:.04,metalness:.85,envMapIntensity:1.6}),capM=mat(L.cap||'#111',{r:.75});
+  const H=new THREE.Group();const hc=new THREE.Vector3(E.x,E.y+.03,E.z+.085);// skull centre (char faces -z)
+  if(!L.noShades&&!L.braids){const fr=mat('#0c0c10',{r:.3,m:.6});for(const sd of [-1,1]){const l=new THREE.Mesh(G.rbox,shade);l.scale.set(.052,.034,.008);l.position.set(E.x+sd*.033,E.y-.002,E.z-.04);H.add(l);
+      const arm=box(fr,.004,.006,.1,E.x+sd*.072,E.y+.004,E.z+.01);H.add(arm);}
+    H.add(box(L.label==='ICE'?gold:fr,.022,.006,.006,E.x,E.y+.006,E.z-.042));}
+  if(L.hat){const cap=new THREE.Mesh(new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,Math.PI/2),capM);cap.scale.set(.1,.085,.112);cap.position.set(hc.x,hc.y+.04,hc.z);H.add(cap);
+    H.add(box(capM,.15,.01,.11,hc.x,hc.y+.045,hc.z+.13));H.add(box(mat(L.capLogo,{e:L.capLogo,ei:.3}),.035,.022,.004,hc.x,hc.y+.085,hc.z-.1));}
+  else if(L.kangol){const kg=new THREE.Mesh(new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,Math.PI/1.9),capM);kg.scale.set(.112,.095,.12);kg.position.set(hc.x,hc.y+.035,hc.z);H.add(kg);
+    const rim=new THREE.Mesh(new THREE.CylinderGeometry(.13,.135,.018,28),capM);rim.position.set(hc.x,hc.y+.04,hc.z);H.add(rim);}
+  else if(L.bandana){const bm=mat(L.bandana,{r:.85});const bd=new THREE.Mesh(new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,Math.PI/2.1),bm);bd.scale.set(.099,.09,.107);bd.position.set(hc.x,hc.y+.03,hc.z);H.add(bd);
+    const knot=new THREE.Mesh(G.sph,bm);knot.scale.set(.026,.02,.018);knot.position.set(hc.x,hc.y+.05,hc.z-.1);H.add(knot);}
+  fix(H,head);
+  const C=new THREE.Group();
+  if(!L.noChain){const r=L.chainBig?.115:.1;const ch=new THREE.Mesh(new THREE.TorusGeometry(r,L.chainBig?.012:.007,8,32),gold);ch.rotation.x=Math.PI/2.6;ch.position.set(Np.x,Np.y-.075,Np.z-.035);C.add(ch);
+    const pd=new THREE.Mesh(new THREE.CylinderGeometry(L.chainBig?.04:.026,L.chainBig?.04:.026,.008,20),gold);pd.rotation.x=Math.PI/2;pd.position.set(Np.x,Np.y-(L.chainBig?.22:.19),Sp.z-.125);C.add(pd);
+    if(L.label==='ICE'){const c2=ch.clone();c2.scale.setScalar(1.18);c2.position.y-=.03;C.add(c2);}}
+  const jet=new THREE.Group();const flames=[];for(const sx of [-.08,.08]){const c=new THREE.Mesh(G.rbox,mat('#c9c9d6',{r:.3,m:.8}));c.scale.set(.09,.28,.09);c.position.set(Sp.x+sx,Sp.y-.02,Sp.z+.19);jet.add(c);
+    const fl=new THREE.Mesh(new THREE.ConeGeometry(.045,.3,12),new THREE.MeshBasicMaterial({color:'#ffb03d',transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));fl.rotation.x=Math.PI;fl.position.set(Sp.x+sx,Sp.y-.3,Sp.z+.19);jet.add(fl);flames.push(fl);}
+  C.add(jet);fix(C,spine);
+  const board=new THREE.Group();const deck=new THREE.Mesh(G.rbox,[mat(DECK.edge,{e:DECK.glow,ei:4}),mat(DECK.edge,{e:DECK.glow,ei:4}),new THREE.MeshStandardMaterial({map:deckTex(),roughness:.4}),mat('#1a0b2e'),mat(DECK.edge,{e:DECK.glow,ei:4}),mat(DECK.edge,{e:DECK.glow,ei:4})]);
+  deck.scale.set(.62,.07,1.45);deck.castShadow=true;board.add(deck);
+  const under=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:DECK.glow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.9}));under.scale.set(1.6,.5,1);under.position.y=-.12;board.add(under);root.add(board);
+  const mixer=new THREE.AnimationMixer(body);const A={};for(const n in av.clips)A[n]=mixer.clipAction(av.clips[n]);
+  ['idle','run','walk'].forEach(n=>{if(A[n]){A[n].play();A[n].setEffectiveWeight(0);}});if(A.idle)A.idle.setEffectiveWeight(1);
+  CH={x:true,real:true,root,model,mixer,A,board,jet,flames,w:{idle:1,run:0,walk:0}};tame(root);scene.add(root);
+}
 function buildXChar(){
+  {const k=avKey();if(AV[k]){buildAvChar(AV[k]);return;}loadAvatar(k,()=>{if(avKey()===k)rebuildChar();});}
+  const __loadingAv=AV_LOADING[avKey()]!==undefined&&AV_LOADING[avKey()]!==null;
   const L=LOOK;if(L.model)loadBase(L.model);const base=(L.model&&BASES[L.model])||XBOT;const real=base!==XBOT;const root=new THREE.Group();const model=SkeletonUtils.clone(base.scene);model.rotation.y=Math.PI;model.scale.set(L.sx||1,L.sy||1,L.sx||1);root.add(model);
   const body=regionMaterial(L,L.glow);const joints=new THREE.MeshStandardMaterial({color:L.hoodieShade,roughness:.55,metalness:.1});
   model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;if(!real)o.material=/Joints/.test(o.material.name)?joints:body;}});
@@ -1243,7 +1340,7 @@ function buildXChar(){
   const under=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:DECK.glow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.9}));under.scale.set(1.6,.5,1);under.position.y=-.12;board.add(under);root.add(board);
   const mixer=new THREE.AnimationMixer(model);const A={};for(const c of XBOT.animations)A[c.name]=mixer.clipAction(c);if(real)tame(model);
   ['idle','run','walk'].forEach(n=>{if(A[n]){A[n].play();A[n].setEffectiveWeight(0);}});if(A.idle)A.idle.setEffectiveWeight(1);
-  CH={x:true,root,model,mixer,A,board,jet,flames,w:{idle:1,run:0,walk:0}};tame(root);body.envMapIntensity=.12;scene.add(root);
+  CH={x:true,root,model,mixer,A,board,jet,flames,w:{idle:1,run:0,walk:0},hidden:__loadingAv};tame(root);body.envMapIntensity=.12;scene.add(root);
 }
 function animXChar(dt){
   const c=CH,inMenu=!(mode==='play'||mode==='pause'||mode==='revive'||mode==='over');
@@ -1262,7 +1359,7 @@ function animXChar(dt){
   c.root.rotation.x=lr(c.root.rotation.x,dead?Math.min(1.2,R.dead*3):(air?-.06:0),Math.min(1,dt*8));
   c.board.visible=board;c.board.position.y=-.05;
   c.jet.visible=jet;if(jet)c.flames.forEach(f=>{f.scale.set(1,.8+Math.random()*.7,1);});
-  c.root.visible=!(mode==='studio')&&!(R.invuln>0&&!inMenu&&Math.floor(T*14)%2===0);
+  c.root.visible=!c.hidden&&!(mode==='studio')&&!(R.invuln>0&&!inMenu&&Math.floor(T*14)%2===0);
 }
 function part(m,sx,sy,sz,x,y,z,parent,geo=G.rbox){const o=new THREE.Mesh(geo,m);o.scale.set(sx,sy,sz);o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o;}
 function pivot(x,y,z,parent){const p=new THREE.Group();p.position.set(x,y,z);parent.add(p);return p;}
@@ -1729,7 +1826,16 @@ function buildPap(side){const g=new THREE.Group();const suit=mat('#23202c',{r:.7
   const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ffffff',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}));fl.scale.setScalar(2.4);fl.position.set(0,.18,-.1);cam.add(fl);
   for(const sd of [-1,1]){const sh=pivot(sd*.3,1.48,0,g);part(suit,.13,.5,.14,0,-.2,-.12,sh);sh.rotation.x=1.3;}
   g.visible=false;scene.add(g);return {g,legs,fl,side,flT:Math.random()};}
-function buildXPap(side){const m=SkeletonUtils.clone(XBOT.scene);m.rotation.y=Math.PI;const g=new THREE.Group();g.add(m);
+function buildAvPap(av,side){const g=new THREE.Group();const m=SkeletonUtils.clone(av.scene);const w=new THREE.Group();w.rotation.y=Math.PI;w.add(m);g.add(w);
+  m.traverse(o=>{if(o.isMesh){o.castShadow=true;o.frustumCulled=false;}});g.updateMatrixWorld(true);
+  const hand=m.getObjectByName('Bip01_R_Hand'),hp=hand.getWorldPosition(new THREE.Vector3());
+  const cam=new THREE.Group();cam.add(box(mat('#1a1a1a',{r:.3,m:.6}),.15,.1,.09,0,0,0));cam.add(box(mat('#2a2a2e',{r:.2,m:.8}),.07,.07,.09,0,0,-.08));
+  const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ffffff',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}));fl.scale.setScalar(1.6);fl.position.set(0,.05,-.14);cam.add(fl);
+  cam.position.set(hp.x,hp.y+.02,hp.z-.06);g.add(cam);g.updateMatrixWorld(true);hand.attach(cam);
+  const mixer=new THREE.AnimationMixer(m);const run=mixer.clipAction(av.clips.run);run.play();run.time=Math.random();
+  g.visible=false;tame(g);scene.add(g);return {g,legs:[{rotation:{}},{rotation:{}}],fl,side,flT:Math.random(),mixer};}
+function buildXPap(side){{const pk=side<0?'pap1':'pap2';if(AV[pk]&&AV[pk].clips.run)return buildAvPap(AV[pk],side);loadAvatar(pk,()=>{PAPS.forEach(p=>scene.remove(p.g));PAPS.length=0;});}
+const m=SkeletonUtils.clone(XBOT.scene);m.rotation.y=Math.PI;const g=new THREE.Group();g.add(m);
   const suit=regionMaterial({skin:'#d8a47c',hoodie:'#23202c',hoodieShade:'#18161f',pants:'#1c1a24',shoes:'#111111',shoeAccent:'#111111',hair:'#2a1c14'});
   m.traverse(o=>{if(o.isMesh){o.castShadow=true;o.frustumCulled=false;o.material=/Joints/.test(o.material.name)?mat('#18161f',{r:.6}):suit;}});m.updateMatrixWorld(true);
   const hand=m.getObjectByName('mixamorigRightHand')||m.getObjectByName('mixamorig:RightHand');const ws=new THREE.Vector3();hand.getWorldScale(ws);

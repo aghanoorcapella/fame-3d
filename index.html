@@ -73,7 +73,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:radial-gradient(elli
 .lv.next{box-shadow:0 0 0 2px #3ddc97,0 0 16px rgba(61,220,151,.5)}
 .topbtns{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;pointer-events:none}
 .topbtns>*{pointer-events:auto}
-.howto{position:absolute;bottom:14px;font-size:11.5px;color:#bba6e6;text-align:center;line-height:1.5;padding:0 24px;opacity:.85}
+.howto{display:none;position:absolute;bottom:14px;font-size:11.5px;color:#bba6e6;text-align:center;line-height:1.5;padding:0 24px;opacity:.85}
 /* hud */
 #hud{position:absolute;inset:0;pointer-events:none;opacity:0;transform:translateY(-10px);transition:opacity .4s,transform .4s}
 #hud.on{opacity:1;transform:none}
@@ -807,7 +807,7 @@ function update(rdt){
   const playing=mode==='play';
   if(intro>0){intro-=rdt;R.speed=lerp(0,12.5,ease(clamp(1-intro/INTRO)));if(intro<=0)bigText('GO!');}
   else if(playing&&R.alive)R.speed=R.finale?lerp(R.speed,0,Math.min(1,rdt*1.6)):Math.min(31,12.5+R.dist/170);
-  if(!playing)R.speed=lerp(R.speed,8,Math.min(1,rdt*2));
+  if(!playing)R.speed=lerp(R.speed,R.finale?0:8,Math.min(1,rdt*2));
   const sp=playing&&!R.alive?R.speed*.15:R.speed;
   const dz=sp*dt;
   R.dist+=dz;R.anim+=dt*(4+sp*.45);
@@ -901,7 +901,7 @@ function hit(o){
 }
 function crash(){cine(true);if(R.chase>0)R.caught=true;R.alive=false;R.dead=0;shake=1;flash=.8;sfxCrash();jetSound(false);try{navigator.vibrate&&navigator.vibrate(180);}catch(e){}const p=P(R.x,R.y+1,PZ);burst(p.x,p.y,'#fff',20,300);}
 function runHints(){
-  if(intro>0||R.jet>0)return;
+  if(intro>0||R.jet>0)return;if(R.finale){hideHint();return;}
   if(!R.hinted.board&&R.dist>40&&S.boards>0){showHint('DOUBLE-TAP FOR A BOARD 🛹','board');return;}
   for(const o of R.objs){if(o.z<PZ+4||o.z>PZ+16||Math.abs(o.x-laneX(R.lane))>.3)continue;
     if(o.k==='low'&&!R.hinted.up){showHint('SWIPE ↑ TO JUMP','up');return;}
@@ -1825,7 +1825,7 @@ function animXChar(dt){
   const c=CH,inMenu=!(mode==='play'||mode==='pause'||mode==='revive'||mode==='over');
   const board=(inMenu&&!(c.danceT>0))||(R.board>0&&!R.finale),jet=!inMenu&&R.jet>0,roll=!inMenu&&R.slide>0&&R.onGround,air=!inMenu&&!R.onGround&&!jet&&R.alive,dead=!inMenu&&!R.alive&&!R.won;
   if(c.danceT>0)c.danceT-=dt;if(inMenu&&mode==='menu'){c.menuT=(c.menuT||0)+dt;if(c.menuT>13){c.menuT=0;c.danceT=5.5;}}
-  const dancing=!!c.A.dance&&((c.danceT>0&&inMenu)||(R.finale&&R.speed<3));
+  const dancing=!!c.A.dance&&((c.danceT>0&&inMenu&&mode==='menu')||(R.finale&&(R.speed<3||mode==='over')));
   const want={idle:(!dancing&&(inMenu||board||jet||dead))?1:0,run:(!dancing&&!inMenu&&!board&&!jet&&!dead)?1:0,walk:0,dance:dancing?1:0};
   const k=Math.min(1,dt*8);for(const n in want){c.w[n]=lr(c.w[n],want[n],k);if(c.A[n])c.A[n].setEffectiveWeight(c.w[n]);}
   if(c.A.run)c.A.run.timeScale=air?.35:clamp(R.speed/13,.85,1.7);
@@ -1843,7 +1843,7 @@ function animXChar(dt){
   c.jet.visible=jet;if(jet)c.flames.forEach(f=>{const k=.85+Math.random()*.45;f.scale.set(1,k*(1+Math.sin(T*40)*.08),1);});
   if(c.gear){const on=!inMenu;c.gear.shoes.forEach(sh=>{sh.visible=on&&R.shoes>0;if(sh.visible){const s0=sh.userData.s0||(sh.userData.s0=sh.scale.clone());const p=1+Math.sin(T*18)*.06;sh.scale.set(s0.x,s0.y*p,s0.z);}});
     if(c.gear.mic){c.gear.mic.visible=on&&R.dbl>0;}if(c.gear.mag){c.gear.mag.visible=on&&R.magnet>0;if(c.gear.mag.visible)c.gear.mag.children.at(-1).material.opacity=.4+Math.sin(T*10)*.25;}}
-  c.root.visible=!c.hidden&&!(mode==='studio')&&!(R.invuln>0&&!inMenu&&Math.floor(T*14)%2===0);
+  c.root.visible=!c.hidden&&!(mode==='studio')&&!(R.invuln>0&&R.invuln<3&&!R.won&&!inMenu&&Math.floor(T*14)%2===0);
 }
 function part(m,sx,sy,sz,x,y,z,parent,geo=G.rbox){const o=new THREE.Mesh(geo,m);o.scale.set(sx,sy,sz);o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o;}
 function pivot(x,y,z,parent){const p=new THREE.Group();p.position.set(x,y,z);parent.add(p);return p;}
@@ -2678,9 +2678,13 @@ function makeStage(){const g=new THREE.Group();const deck=mat('#14101c',{r:.6,m:
   // crowd lining the track
   const N=90,cg=new THREE.CapsuleGeometry(.2,.7,4,8),cm=new THREE.MeshStandardMaterial({roughness:.8});const crowd=new THREE.InstancedMesh(cg,cm,N);const base=[];const m4=new THREE.Matrix4(),col=new THREE.Color();
   for(let i=0;i<N;i++){const sd=i%2?1:-1;const x=sd*(2.6+Math.random()*3.2),z=2+Math.random()*16;base.push([x,z,Math.random()*6]);m4.makeTranslation(x,.6,z);crowd.setMatrixAt(i,m4);col.setHSL(Math.random(),.6,.45+Math.random()*.2);crowd.setColorAt(i,col);}
-  g.add(crowd);g.userData={beams,crowd,base};return g;}
+  const heads=new THREE.InstancedMesh(new THREE.SphereGeometry(.17,12,10),new THREE.MeshStandardMaterial({color:'#7a5038',roughness:.7}),N);const arms=new THREE.InstancedMesh(new THREE.CapsuleGeometry(.06,.45,3,6),new THREE.MeshStandardMaterial({roughness:.8}),N*2);
+  for(let i=0;i<N;i++){col.setHSL(.05+Math.random()*.05,.45,.25+Math.random()*.45);heads.setColorAt(i,col);col.setHSL(Math.random(),.6,.5);arms.setColorAt(i*2,col);arms.setColorAt(i*2+1,col);}
+  g.add(crowd,heads,arms);g.userData={beams,crowd,heads,arms,base};return g;}
 function stageTick(s){const u=s.mesh.userData;u.beams.forEach((b,i)=>{b.rotation.z=Math.sin(T*1.4+i)*.45;b.rotation.x=Math.cos(T*1.1+i*.7)*.3;});
-  const m4=new THREE.Matrix4();u.base.forEach(([x,z,ph],i)=>{m4.makeTranslation(x,.6+Math.abs(Math.sin(T*6+ph))*.35,z);u.crowd.setMatrixAt(i,m4);});u.crowd.instanceMatrix.needsUpdate=true;}
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),sc=new THREE.Vector3(1,1,1),ps=new THREE.Vector3();u.base.forEach(([x,z,ph],i)=>{const j=Math.abs(Math.sin(T*6+ph))*.35;m4.makeTranslation(x,.6+j,z);u.crowd.setMatrixAt(i,m4);m4.makeTranslation(x,1.32+j,z);u.heads.setMatrixAt(i,m4);
+    for(const sd of [-1,1]){e.set(0,0,sd*(.35+Math.sin(T*8+ph)*.25));q.setFromEuler(e);ps.set(x+sd*.24,1.35+j,z);m4.compose(ps,q,sc);u.arms.setMatrixAt(i*2+(sd>0?1:0),m4);}});
+  u.crowd.instanceMatrix.needsUpdate=u.heads.instanceMatrix.needsUpdate=u.arms.instanceMatrix.needsUpdate=true;}
 // ---- victory dance (mocap from three.js "Michelle" samba, retargeted onto every avatar) ----
 let DANCE=null;new GLTFLoader().load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/Michelle.glb',g=>{DANCE=g;if(CH&&CH.real&&!CH.A.dance)rebuildChar();},undefined,()=>{});
 // ---- auto quality: keeps phones smooth ----

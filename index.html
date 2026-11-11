@@ -988,7 +988,7 @@ function part(m,sx,sy,sz,x,y,z,parent,geo=G.rbox){const o=new THREE.Mesh(geo,m);
 function pivot(x,y,z,parent){const p=new THREE.Group();p.position.set(x,y,z);parent.add(p);return p;}
 function buildChar(){
   const L=LOOK;const root=new THREE.Group();const body=new THREE.Group();root.add(body);
-  const hood=mat(L.hoodie,{r:.75,e:L.glow||'#000000',ei:L.glow?.18:0}),hoodS=mat(L.hoodieShade,{r:.8}),pants=mat(L.pants,{r:.8}),pantsS=mat(L.pantsShade,{r:.8}),skin=mat(L.skin,{r:.55}),hair=mat(L.hair,{r:.9}),shoe=mat(L.shoes,{r:.45}),acc=mat(L.shoeAccent,{r:.45}),gold=mat(L.chain,{r:.2,m:1,e:L.chain,ei:.25}),capM=mat(L.cap||'#111',{r:.7}),shade=mat('#0b0b10',{r:.1,m:.6});
+  const hood=mat(L.hoodie,{r:.75,e:L.glow||'#000000',ei:L.glow?.05:0}),hoodS=mat(L.hoodieShade,{r:.8}),pants=mat(L.pants,{r:.8}),pantsS=mat(L.pantsShade,{r:.8}),skin=mat(L.skin,{r:.55}),hair=mat(L.hair,{r:.9}),shoe=mat(L.shoes,{r:.45}),acc=mat(L.shoeAccent,{r:.45}),gold=mat(L.chain,{r:.2,m:1,e:L.chain,ei:.25}),capM=mat(L.cap||'#111',{r:.7}),shade=mat('#0b0b10',{r:.1,m:.6});
   const pelvis=pivot(0,.92,0,body);
   part(pantsS,.4,.2,.26,0,0,0,pelvis);
   const legs=[];for(const sd of [-1,1]){const hip=pivot(sd*.11,0,0,pelvis);part(sd<0?pantsS:pants,.18,.48,.19,0,-.24,0,hip);const knee=pivot(0,-.47,0,hip);part(sd<0?pantsS:pants,.16,.44,.17,0,-.22,0,knee);
@@ -1080,8 +1080,8 @@ function updateCamera(dt){
     const e=ease(clamp(1-intro/INTRO));
     const f=introFrom.p,aS=Math.atan2(f.x,f.z+PZ),rS=Math.hypot(f.x,f.z+PZ);
     const a=lerp(aS,0,e);
-    const r=lerp(rS,4.6,e);
-    camPos.set(Math.sin(a)*r,lerp(f.y,tg.p.y,e)+Math.sin(e*Math.PI)*1.9,-PZ+Math.cos(a)*r);
+    const r=lerp(rS,4.6,e)*(1-.6*Math.sin(e*Math.PI));
+    camPos.set(Math.sin(a)*r,lerp(f.y,tg.p.y,e)+Math.sin(e*Math.PI)*2.6,-PZ+Math.cos(a)*r);
     camLook.lerpVectors(introFrom.l,tg.l,e);
     camRoll=Math.sin(e*Math.PI)*.09;
   }else{

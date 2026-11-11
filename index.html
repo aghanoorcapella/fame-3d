@@ -1620,8 +1620,8 @@ function buildAvChar(av){
   if(!L.noChain&&hm&&hm.neck&&hm.neck.colZ>-1e8){const nk=hm.neck,thick=L.chainBig?.0075:.0045;
     const mk=(drop,spread,extraZ)=>{const pts=[cv(0,nk.y-1.5,nk.bkZ-.8),cv(-spread*.85,nk.y-4,(nk.colZ+nk.bkZ)/2),cv(-spread,nk.y-7,nk.colZ-1.2),cv(-spread*.45,nk.y-drop*.7,nk.chZ+.6+extraZ),cv(0,nk.y-drop,nk.chZ+1+extraZ),cv(spread*.45,nk.y-drop*.7,nk.chZ+.6+extraZ),cv(spread,nk.y-7,nk.colZ-1.2),cv(spread*.85,nk.y-4,(nk.colZ+nk.bkZ)/2)];
       return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts,true,'centripetal'),80,thick,6,true),gold);};
-    C.add(mk(L.chainBig?20:17,6.8,0));if(L.label==='ICE'||L.chainBig)C.add(mk(L.chainBig?25:22,7.6,.8));
-    const pp=cv(0,nk.y-(L.chainBig?20:17)-(L.chainBig?3.6:2.6),nk.chZ+1.4);const pd=new THREE.Mesh(new THREE.CylinderGeometry(L.chainBig?.034:.022,L.chainBig?.034:.022,.007,24),gold);pd.rotation.x=Math.PI/2;pd.position.copy(pp);C.add(pd);
+    C.add(mk(L.chainBig?19:14.5,5.6,0));if(L.label==='ICE'||L.chainBig)C.add(mk(L.chainBig?24:19,6.4,.8));
+    const pp=cv(0,nk.y-(L.chainBig?19:14.5)-(L.chainBig?3.6:2.6),nk.chZ+1.4);const pd=new THREE.Mesh(new THREE.CylinderGeometry(L.chainBig?.034:.022,L.chainBig?.034:.022,.007,24),gold);pd.rotation.x=Math.PI/2;pd.position.copy(pp);C.add(pd);
     const pl=new THREE.Mesh(new THREE.PlaneGeometry(L.chainBig?.05:.032,L.chainBig?.05:.032),new THREE.MeshBasicMaterial({map:labelTex(L.pendant||'F','#1a0b2e'),transparent:true}));pl.position.set(pp.x,pp.y,pp.z-.0045);pl.rotation.y=Math.PI;C.add(pl);}
   const jet=new THREE.Group();const flames=[];for(const sx of [-.08,.08]){const c=new THREE.Mesh(G.rbox,mat('#c9c9d6',{r:.3,m:.8}));c.scale.set(.09,.28,.09);c.position.set(Sp.x+sx,Sp.y-.02,Sp.z+.19);jet.add(c);
     const fl=new THREE.Mesh(new THREE.ConeGeometry(.045,.3,12),new THREE.MeshBasicMaterial({color:'#ffb03d',transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));fl.rotation.x=Math.PI;fl.position.set(Sp.x+sx,Sp.y-.3,Sp.z+.19);jet.add(fl);flames.push(fl);}
@@ -1695,7 +1695,7 @@ function poseAv(c,dt,st){
     la:g('Bip01_L_UpperArm'),ra:g('Bip01_R_UpperArm'),lfa:g('Bip01_L_Forearm'),rfa:g('Bip01_R_Forearm'),lto:g('Bip01_L_Toe0'),rto:g('Bip01_R_Toe0')};})());
   // slide: torso back, legs shot forward, one arm trailing, head looking ahead
   if(sw>.001){boneAdd(B.sp,X,sw*.35);boneAdd(B.hd,X,-sw*.75);boneAdd(B.lt,X,sw*1.05);boneAdd(B.rt,X,sw*.75);boneAdd(B.rc,X,-sw*.55);boneAdd(B.lc,X,-sw*.12);
-    boneAdd(B.la,X,-sw*.5);boneAdd(B.ra,X,sw*.9);boneAdd(B.rfa,X,sw*.5);}
+    boneAdd(B.la,X,-sw*.45);boneAdd(B.ra,X,sw*.55);boneAdd(B.rfa,X,sw*.35);}
   // superman: right fist punched forward, left arm swept back, legs together, head up
   if(jw>.001){boneAdd(B.hd,X,jw*.95);boneAdd(B.nk,X,jw*.25);boneAdd(B.ra,X,jw*2.85);boneAdd(B.rfa,X,jw*.1);boneAdd(B.la,X,-jw*.35);
     _v.set(0,0,1).applyQuaternion(c.root.getWorldQuaternion(_rq));boneAdd(B.lt,_v,jw*.09);boneAdd(B.rt,_v,-jw*.09);boneAdd(B.lt,X,-jw*.08);boneAdd(B.rt,X,-jw*.02);boneAdd(B.lc,X,-jw*.25);boneAdd(B.rc,X,-jw*.1);

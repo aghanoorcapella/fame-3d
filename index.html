@@ -898,6 +898,7 @@ const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(60,W/H,.1,600);
 scene.fog=new THREE.Fog(0xffb066,40,175);
 scene.environment=pmrem.fromScene(new RoomEnvironment(),.04).texture;
+setTimeout(()=>tame(scene),0);
 let composer=null,bloom=null;
 function setupCanvas(){
   const k=Math.min(innerWidth/W,innerHeight/H);
@@ -1150,17 +1151,18 @@ function makeObj(o){
     const ls=[];for(let l=0;l<3;l++){const s=new THREE.Mesh(G.sph,sigG);s.scale.setScalar(.11);s.position.set(laneX(l),6.0,.18);g.add(s);ls.push(s);}g.userData.lights=ls;return g;}
   return null;
 }
+function tame(root){root.traverse(o=>{if(!o.material)return;(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m.isMeshStandardMaterial&&!m.userData.tamed){m.userData.tamed=true;m.envMapIntensity=m.metalness>=.5?Math.min(m.envMapIntensity??1,1.3):Math.min(m.envMapIntensity??1,.22);}});});return root;}
 function disposeObj(o){if(o&&o.mesh){scene.remove(o.mesh);o.mesh=null;}}
 function clearObjs(w){if(!w)return;for(const o of w.objs)disposeObj(o);}
 function syncWorld(){
   for(const o of R.objs){
-    if(!o.mesh){o.mesh=makeObj(o);if(!o.mesh)continue;scene.add(o.mesh);}
+    if(!o.mesh){o.mesh=makeObj(o);if(!o.mesh)continue;tame(o.mesh);scene.add(o.mesh);}
     if(o.k==='coin'){o.mesh.position.set(o.x,o.y,-o.z);o.mesh.rotation.y=T*3.2+o.z*.3;o.mesh.scale.setScalar(1+beatPulse*.28);const gl=o.mesh.userData.gl;if(gl)gl.material.opacity=Math.max(0,Math.sin(T*2.3+o.mesh.userData.ph))**12;}
     else if(o.k==='pup'){o.mesh.position.set(o.x,o.y+Math.sin(T*4)*.12,-o.z);o.mesh.children[1].rotation.z=T*3;}
     else o.mesh.position.set(o.x,0,-o.z);
   }
   for(const s of R.scen){
-    if(!s.mesh){s.mesh=makeObj(s);if(!s.mesh)continue;scene.add(s.mesh);}
+    if(!s.mesh){s.mesh=makeObj(s);if(!s.mesh)continue;tame(s.mesh);scene.add(s.mesh);}
     s.mesh.position.set(s.x,0,-s.z);
     if(s.k==='palm')s.mesh.userData.crown.rotation.z=Math.sin(T*1.3+s.ph)*.07;
     else if((s.k==='pine'||s.k==='snowpine'||s.k==='oak'))s.mesh.rotation.z=Math.sin(T*1.1+s.ph)*.015;
@@ -1227,7 +1229,7 @@ function buildXChar(){
   const under=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:DECK.glow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.9}));under.scale.set(1.6,.5,1);under.position.y=-.12;board.add(under);root.add(board);
   const mixer=new THREE.AnimationMixer(model);const A={};for(const c of XBOT.animations)A[c.name]=mixer.clipAction(c);
   ['idle','run','walk'].forEach(n=>{if(A[n]){A[n].play();A[n].setEffectiveWeight(0);}});if(A.idle)A.idle.setEffectiveWeight(1);
-  CH={x:true,root,model,mixer,A,board,jet,flames,w:{idle:1,run:0,walk:0}};scene.add(root);
+  CH={x:true,root,model,mixer,A,board,jet,flames,w:{idle:1,run:0,walk:0}};tame(root);body.envMapIntensity=.12;scene.add(root);
 }
 function animXChar(dt){
   const c=CH,inMenu=!(mode==='play'||mode==='pause'||mode==='revive'||mode==='over');
@@ -1295,7 +1297,7 @@ function buildChar(){
     const fl=new THREE.Mesh(new THREE.ConeGeometry(.07,.45,12),new THREE.MeshBasicMaterial({color:'#ffb03d',transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));fl.rotation.x=Math.PI;fl.position.set(sx,.0,.24);jet.add(fl);flames.push(fl);}
   spine.add(jet);
   CH={root,body,pelvis,spine,legs,arms,board,jet,flames,head};
-  scene.add(root);
+  tame(root);scene.add(root);
 }
 function rebuildChar(){if(!window.__engineReady)return;if(CH){scene.remove(CH.root);}if(XBOT){try{buildXChar();return;}catch(e){console.warn('xbot',e);}}buildChar();}
 const lr=(a,b,k)=>a+(b-a)*k;
@@ -1715,7 +1717,7 @@ function buildXPap(side){const m=SkeletonUtils.clone(XBOT.scene);m.rotation.y=Ma
   const hand=m.getObjectByName('mixamorigRightHand')||m.getObjectByName('mixamorig:RightHand');const ws=new THREE.Vector3();hand.getWorldScale(ws);
   const cam=new THREE.Group();cam.add(box(mat('#1a1a1a',{r:.3,m:.6}),.16,.11,.09,0,.06,.05));const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ffffff',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}));fl.scale.setScalar(1.6);fl.position.set(0,.1,.12);cam.add(fl);
   attachTo(hand,cam,ws.x);const mixer=new THREE.AnimationMixer(m);const run=mixer.clipAction(XBOT.animations.find(a=>a.name==='run'));run.play();run.time=Math.random();
-  g.visible=false;scene.add(g);return {g,legs:[{rotation:{}},{rotation:{}}],fl,side,flT:Math.random(),mixer};}
+  g.visible=false;tame(g);scene.add(g);return {g,legs:[{rotation:{}},{rotation:{}}],fl,side,flT:Math.random(),mixer};}
 function updatePaps(dt){
   if(!PAPS.length&&window.__engineReady){if(XBOT){try{PAPS.push(buildXPap(-1),buildXPap(1));}catch(e){}}if(!PAPS.length)PAPS.push(buildPap(-1),buildPap(1));}
   for(const p of PAPS)if(p.mixer)p.mixer.update(dt*clamp(R.speed/13,.8,1.7));
@@ -1975,7 +1977,7 @@ function loop(now){
 computePal(0);refreshMenu();refreshChar(false);setTimeout(()=>$('fade').classList.add('off'),80);
 if(S.runs===0)setTimeout(()=>mode==='menu'&&toast('🎤 <b>Welcome to Fame the Game!</b> Run the tracks, stack coins, then build Fame Records into an empire. You start with 3 FAME Boards — double-tap to ride.'),2600);
 window.__fameOK=true;
-window.dbg={get R(){return R},get S(){return S},get mode(){return mode},grabPup,camera,renderer,get pal(){return pal},get LV(){return LV},scene,tick(n=1,dt=.016){for(let i=0;i<n;i++){T+=0;update(dt);render(dt);}},shot(){if(composer)composer.render();else renderer.render(scene,camera);return glc.toDataURL('image/jpeg',.8);},startLevel,get xbot(){return !!XBOT},get CH(){return CH},get song(){return songEl},get kick(){return lastKick},get kickGap(){return kickGap}};
+window.dbg={get R(){return R},get S(){return S},get mode(){return mode},grabPup,camera,renderer,get pal(){return pal},get LV(){return LV},scene,get composer(){return composer},get bloom(){return bloom},tick(n=1,dt=.016){for(let i=0;i<n;i++){T+=0;update(dt);render(dt);}},shot(){if(composer)composer.render();else renderer.render(scene,camera);return glc.toDataURL('image/jpeg',.8);},startLevel,get xbot(){return !!XBOT},get CH(){return CH},get song(){return songEl},get kick(){return lastKick},get kickGap(){return kickGap}};
 requestAnimationFrame(loop);
 </script>
 </body>

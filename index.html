@@ -1199,7 +1199,7 @@ function buildXChar(){
   const body=regionMaterial(L,L.glow);const joints=new THREE.MeshStandardMaterial({color:L.hoodieShade,roughness:.55,metalness:.1});
   model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material=/Joints/.test(o.material.name)?joints:body;}});
   model.updateMatrixWorld(true);
-  const bone=n=>model.getObjectByName('mixamorig:'+n);
+  const bone=n=>model.getObjectByName('mixamorig'+n)||model.getObjectByName('mixamorig:'+n);
   const head=bone('Head'),neck=bone('Neck'),spine=bone('Spine2');
   const ws=new THREE.Vector3();head.getWorldScale(ws);const s=ws.x;
   const gold=mat(L.chain,{r:.2,m:1,e:L.chain,ei:.2}),shade=new THREE.MeshStandardMaterial({color:'#0b0b10',roughness:.05,metalness:.9,envMapIntensity:2}),hair=mat(L.hair,{r:.9}),capM=mat(L.cap||'#111',{r:.7});
@@ -1712,7 +1712,7 @@ function buildPap(side){const g=new THREE.Group();const suit=mat('#23202c',{r:.7
 function buildXPap(side){const m=SkeletonUtils.clone(XBOT.scene);m.rotation.y=Math.PI;const g=new THREE.Group();g.add(m);
   const suit=regionMaterial({skin:'#d8a47c',hoodie:'#23202c',hoodieShade:'#18161f',pants:'#1c1a24',shoes:'#111111',shoeAccent:'#111111',hair:'#2a1c14'});
   m.traverse(o=>{if(o.isMesh){o.castShadow=true;o.frustumCulled=false;o.material=/Joints/.test(o.material.name)?mat('#18161f',{r:.6}):suit;}});m.updateMatrixWorld(true);
-  const hand=m.getObjectByName('mixamorig:RightHand');const ws=new THREE.Vector3();hand.getWorldScale(ws);
+  const hand=m.getObjectByName('mixamorigRightHand')||m.getObjectByName('mixamorig:RightHand');const ws=new THREE.Vector3();hand.getWorldScale(ws);
   const cam=new THREE.Group();cam.add(box(mat('#1a1a1a',{r:.3,m:.6}),.16,.11,.09,0,.06,.05));const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ffffff',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}));fl.scale.setScalar(1.6);fl.position.set(0,.1,.12);cam.add(fl);
   attachTo(hand,cam,ws.x);const mixer=new THREE.AnimationMixer(m);const run=mixer.clipAction(XBOT.animations.find(a=>a.name==='run'));run.play();run.time=Math.random();
   g.visible=false;scene.add(g);return {g,legs:[{rotation:{}},{rotation:{}}],fl,side,flT:Math.random(),mixer};}

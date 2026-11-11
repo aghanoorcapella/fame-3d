@@ -1365,8 +1365,8 @@ function refreshChar(anim){const c=CHARS.find(x=>x.id===S.char)||CHARS[0];const 
   if(anim)rebuildChar();}
 function switchChar(d){const i=CHARS.findIndex(x=>x.id===S.char);S.char=CHARS[(i+d+CHARS.length)%CHARS.length].id;applyLook();refreshChar(true);sfxClick();save();
   const c=CHARS.find(x=>x.id===S.char);
-  if(c.tribute){const ti=TRACKS.findIndex(t=>t.tribute);S.track=ti;initAudio();if(S.musicOn)playTrack(ti);toastQuick('🕯️ Playing as a legend');}
-  else{if(S.musicKind==='beat'&&TRACKS[S.track].tribute){S.track=0;if(S.musicOn&&AC)playSong(S.song||'going-down');}}
+  if(c.tribute){initAudio();S.musicOn=true;if(musicBus)musicBus.gain.value=.72;RADIO_CUR=null;playSong('fresh-kid-ice-is-back');toastQuick('🕯️ Fresh Kid Ice Is Back');}
+  else{if(curSong==='fresh-kid-ice-is-back'||(S.musicKind==='beat'&&TRACKS[S.track].tribute)){S.track=0;if(S.musicOn&&AC)playSong('going-down');}}
   burst(W/2,360,LOOK.glow||'#ffd23f',26,260);fovKick-=6;}
 $('chPrev').onclick=()=>switchChar(-1);$('chNext').onclick=()=>switchChar(1);
 function tributeHTML(){return `<div class="candle">🕯️</div><h2>IN MEMORY</h2><div class="years">FRESH KID ICE<br><span style="font-size:15px;color:#fff">Christopher Wong Won · 1964 – 2017</span></div>
@@ -1450,8 +1450,8 @@ function renderTab(anim){
       <div class="chips">${RADIO.map(r=>`<button class="chip ${RADIO_CUR===r.id?'on':''}" data-act="radio:${r.id}">${r.t}</button>`).join('')}</div>
       <a href="https://music.youtube.com/channel/UCCB13_fPwMVF6R0VptvK0SQ" target="_blank" rel="noopener">Open Fame Faiella on YouTube Music ↗</a></div>`;
     h+=`<div class="section">🎤 FAME FAIELLA · REAL TRACKS</div>`;
-    for(const sg of SONGS){const un=songOk(sg),on=S.musicKind==='song'&&(curSong||S.song)===sg.id&&musicPlaying();
-      h+=`<div class="card ${on?'track on':''}" ${sg.special?'style="border:1px solid rgba(255,90,90,.5);box-shadow:0 0 18px rgba(255,80,80,.18)"':''}><div class="ic">${un?(on?'🔊':(sg.special?'🔥':'🎤')):'🔒'}</div><div class="info"><b>${un||!sg.special?sg.name:'???'}</b><span class="lv">${sg.special?'SECRET':'FAME FAIELLA'}</span><p>${un?'Full song · beat-synced lights & on-beat jumps':'🔒 '+sg.how}</p></div>${un?(on?'<span style="font-weight:800;color:#ffd23f">PLAYING</span>':`<button class="btn sm" data-act="song:${sg.id}">Play</button>`):''}</div>`;}
+    for(const sg of SONGS){if(sg.tribute)h+='<div class="section">🕯️ FRESH KID ICE · TRIBUTE</div>';const un=songOk(sg),on=S.musicKind==='song'&&(curSong||S.song)===sg.id&&musicPlaying();
+      h+=`<div class="card ${on?'track on':''}" ${sg.special?'style="border:1px solid rgba(255,90,90,.5);box-shadow:0 0 18px rgba(255,80,80,.18)"':''}><div class="ic">${un?(on?'🔊':(sg.special?'🔥':'🎤')):'🔒'}</div><div class="info"><b>${un||!sg.special?sg.name:'???'}</b><span class="lv">${sg.special?'SECRET':(sg.artist||'FAME FAIELLA')}</span><p>${un?'Full song · beat-synced lights & on-beat jumps':'🔒 '+sg.how}</p></div>${un?(on?'<span style="font-weight:800;color:#ffd23f">PLAYING</span>':`<button class="btn sm" data-act="song:${sg.id}">Play</button>`):''}</div>`;}
     h+=`<div class="section">BEAT LIBRARY · upgrade Studio Monitors to unlock</div>`;
     TRACKS.forEach((t,i)=>{const un=trackUnlocked(i),on=S.musicKind==='beat'&&S.track===i;if(t.tribute)h+='<div class="section">🕯️ TRIBUTE</div>';
       h+=`<div class="card ${on?'track on':''}"><div class="ic">${un?(on?'🔊':'🎵'):'🔒'}</div><div class="info"><b>${un?t.name:'Locked beat'}</b><span class="lv">${t.bpm} BPM</span><p>${t.style}${un?'':' · Monitors LV '+i}</p>${un?`<div class="fact">${t.fact}</div>`:''}</div>${un?(on?'<span style="font-weight:800;color:#ffd23f">PLAYING</span>':`<button class="btn sm" data-act="play:${i}">Play</button>`):''}</div>`;});
@@ -1642,6 +1642,7 @@ const SONGS=[
  {id:'im-on',name:'I’m On',bpm:80,unlock:()=>S.studio.speakers>=2,how:'Studio Monitors LV 2'},
  {id:'flavors',name:'Flavors',bpm:98.5,unlock:()=>S.studio.speakers>=3,how:'Studio Monitors LV 3'},
  {id:'running-back',name:'Running Back',bpm:125,unlock:()=>S.studio.speakers>=4,how:'Studio Monitors LV 4'},
+ {id:'fresh-kid-ice-is-back',name:'Fresh Kid Ice Is Back',bpm:128,unlock:null,how:'Plays when you pick Fresh Kid Ice',tribute:true,artist:'FRESH KID ICE'},
  {id:'never-quit-never-surrender',name:'Never Quit Never Surrender',bpm:142,unlock:()=>S.best>=2000||!!(S.songsUnlocked||{})['never-quit-never-surrender'],how:'Don’t surrender: run 2,000m in one run',special:true},
 ];
 const songOk=sg=>!sg.unlock||sg.unlock();
@@ -1649,7 +1650,7 @@ let songEl=null,songSrc=null,songAn=null,songBuf=null,curSong=null,songAvg=0,las
 function ensureSongEl(){
   if(songEl)return;initAudio();if(!AC)return;
   songEl=new Audio();songEl.preload='auto';songEl.setAttribute('playsinline','');
-  songEl.addEventListener('ended',()=>{const ok=SONGS.filter(songOk);const i=ok.findIndex(x=>x.id===curSong);playSong(ok[(i+1)%ok.length].id);});
+  songEl.addEventListener('ended',()=>{if(S.char==='ice'&&curSong==='fresh-kid-ice-is-back'){songEl.currentTime=0;songEl.play().catch(()=>{});return;}const ok=SONGS.filter(x=>songOk(x)&&!x.tribute);const i=ok.findIndex(x=>x.id===curSong);playSong(ok[(i+1)%ok.length].id);});
   try{songSrc=AC.createMediaElementSource(songEl);songAn=AC.createAnalyser();songAn.fftSize=1024;songAn.smoothingTimeConstant=.25;songSrc.connect(songAn);songSrc.connect(musicBus);songBuf=new Uint8Array(songAn.frequencyBinCount);}catch(e){}
 }
 function stopSong(){if(songEl&&!songEl.paused)songEl.pause();curSong=null;}
@@ -1660,10 +1661,10 @@ function playSong(id){
   if(curSong!==sg.id){songEl.src='music/'+sg.id+'.mp3';curSong=sg.id;}
   S.musicKind='song';S.song=sg.id;
   const pr=songEl.play();if(pr&&pr.catch)pr.catch(()=>{});
-  $('nowplaying').textContent='♪ Fame Faiella — '+sg.name+'  ⏭';
+  $('nowplaying').textContent='♪ '+(sg.artist?'Fresh Kid Ice':'Fame Faiella')+' — '+sg.name+'  ⏭';
 }
 function musicPlaying(){return curTrack>=0||(songEl&&!songEl.paused);}
-function startMusic(){if(!S.musicOn||musicPlaying())return;if(S.musicKind==='beat')playTrack(S.track);else playSong(S.song||'going-down');}
+function startMusic(){if(!S.musicOn||musicPlaying())return;if(S.char==='ice'){playSong('fresh-kid-ice-is-back');return;}if(S.musicKind==='beat')playTrack(S.track);else playSong(S.song||'going-down');}
 // live kick detection from the song's low end
 function songBeat(){
   if(!songAn||!songEl||songEl.paused||!S.musicOn||S.muted)return;

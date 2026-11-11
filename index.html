@@ -350,7 +350,7 @@ const pick=a=>a[Math.floor(Math.random()*a.length)];
 // ---------- Persistence ----------
 const KEY='fame_the_game_3d_v1';
 const DEF={coins:0,total:0,best:0,bestScore:0,runs:0,studio:{mic:0,board:0,speakers:0,booth:0,decor:0},artists:{},track:0,quiz:0,quizRight:0,last:Date.now(),muted:false,musicOn:true,hq:true,
-  boards:3,hype:0,char:'fame',pu:{magnet:0,dbl:0,jet:0,shoes:0},flags:{},ach:{},flowBest:0,story:false,beatsTotal:0,outfit:'classic',owned:['classic'],deck:'classic',decks:['classic'],missions:null,mDone:0,mult:1,daily:{last:'',streak:0},top:[],life:{jumps:0,slides:0,tops:0,powers:0,boards:0}};
+  boards:3,hype:0,char:'fame',musicKind:'song',song:'going-down',songsUnlocked:{},pu:{magnet:0,dbl:0,jet:0,shoes:0},flags:{},ach:{},flowBest:0,story:false,beatsTotal:0,outfit:'classic',owned:['classic'],deck:'classic',decks:['classic'],missions:null,mDone:0,mult:1,daily:{last:'',streak:0},top:[],life:{jumps:0,slides:0,tops:0,powers:0,boards:0}};
 let S;
 function load(){
   S=JSON.parse(JSON.stringify(DEF));
@@ -547,7 +547,7 @@ function scheduleStep(T,s,t){
 function seqTick(){if(!AC||curTrack<0)return;const T=TRACKS[curTrack],sd=60/T.bpm/4;
   if(nextT<AC.currentTime-.2)nextT=AC.currentTime+.05;
   while(nextT<AC.currentTime+.12){const sw=(step%2)?T.swing*sd:0;scheduleStep(T,step,nextT+sw);nextT+=sd;step=(step+1)%16;if(step===0)bar++;}}
-function playTrack(i){initAudio();if(!AC)return;BEATQ=[];KICKQ=[];curTrack=i;step=0;bar=0;nextT=AC.currentTime+.06;if(!seqTimer)seqTimer=setInterval(seqTick,25);$('nowplaying').textContent='♪ '+TRACKS[i].name+'  ⏭';}
+function playTrack(i){initAudio();if(!AC)return;if(typeof stopSong==='function')stopSong();S.musicKind='beat';BEATQ=[];KICKQ=[];curTrack=i;step=0;bar=0;nextT=AC.currentTime+.06;if(!seqTimer)seqTimer=setInterval(seqTick,25);$('nowplaying').textContent='♪ '+TRACKS[i].name+'  ⏭';}
 function blip(freqs,type,gap,v,dur){if(!AC)return;const t=AC.currentTime;freqs.forEach((f,i)=>{const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;env(g,t+i*gap,.003,v,dur);o.connect(g).connect(sfxBus);o.start(t+i*gap);o.stop(t+i*gap+dur+.05);});}
 let coinPitch=0,coinPitchT=0;
 function sfxCoin(){if(!AC)return;if(T-coinPitchT>.5)coinPitch=0;coinPitchT=T;coinPitch=Math.min(coinPitch+1,8);const b=1318*Math.pow(2,coinPitch/24);blip([b,b*1.5],'square',.045,.07,.11);}
@@ -1215,7 +1215,8 @@ function drawSpeedLines(){
 }
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
 function render(dt){
-  if(AC&&S.musicOn&&!S.muted){const now=AC.currentTime;while(KICKQ.length&&KICKQ[0]<=now){KICKQ.shift();beatPulse=1;}while(BEATQ.length&&BEATQ[0]<=now)lastBeat=BEATQ.shift();}else{KICKQ.length=0;BEATQ.length=0;}
+  if(AC&&S.musicOn&&!S.muted&&curTrack>=0){const now=AC.currentTime;while(KICKQ.length&&KICKQ[0]<=now){KICKQ.shift();beatPulse=1;}while(BEATQ.length&&BEATQ[0]<=now)lastBeat=BEATQ.shift();}else{KICKQ.length=0;BEATQ.length=0;}
+  songBeat();
   beatPulse=Math.max(0,beatPulse-dt*5);
   updatePaps(dt);
   updateTies();syncWorld();animChar(dt);updateCamera(dt);updateEnv();
@@ -1288,7 +1289,7 @@ function updateHudStatic(){$('hBoardN').textContent=S.boards;$('hMult').textCont
 function startRun(){
   if(charLocked(curChar())){toastQuick('🔒 Sign this artist in the Label tab first');sfxBonk();return;}
   if(!S.story){S.story=true;save();playStory(startRun);return;}
-  initAudio();if(curTrack<0&&S.musicOn)playTrack(S.track);
+  initAudio();startMusic();
   sfxClick();
   {const old=R;clearObjs(old);R=newWorld();R.scen=old.scen;R.nextScen=old.nextScen;R.gantry=old.gantry;R.bill=old.bill;}R.speed=0;if(perk().board)R.board=perk().board;if(S.char==='ice')S.flags.ice=true;mode='play';show('hud');hideHint();updateHudStatic();updatePups();
   introFrom={p:camPos.clone(),l:camLook.clone()};
@@ -1329,7 +1330,7 @@ function gameOver(){
   countUp($('oScore'),sc,1100);countUp($('oDist'),d,900,'m');countUp($('oCoins'),earned,900);
   $('oTip').innerHTML=R.caught?'📸 <b>Caught by the paparazzi!</b> Stumbling twice in a row gets you caught — keep it clean.':suggest();
   LASTRUN={sc,d,coins:earned,char:curChar().name};if(R.beats>=10)S.flags.beat10=true;
-  show('over');setTimeout(checkAch,1200);
+  show('over');setTimeout(()=>{checkAch();checkSongUnlocks();},1200);
   if(nb){confetti(90);sfxJingle();}
 }
 function suggest(){
@@ -1341,10 +1342,10 @@ function suggest(){
   const all=[...TRACKS.map(t=>t.fact),...ITEMS.flatMap(i=>i.tips.slice(0,1)),...ARTIST_TIPS];
   return '🎓 '+pick(all);
 }
-function pauseGame(){if(mode!=='play')return;mode='pause';$('pMis').innerHTML=`<div class="section" style="text-align:left">MISSIONS · x${S.mult} multiplier</div>`+missionsHTML();show('pause');if(AC)AC.suspend();}
+function pauseGame(){if(mode!=='play')return;mode='pause';$('pMis').innerHTML=`<div class="section" style="text-align:left">MISSIONS · x${S.mult} multiplier</div>`+missionsHTML();show('pause');if(AC)AC.suspend();if(songEl&&!songEl.paused){songEl.pause();songEl._resume=true;}}
 let resumeT=null;
-$('resumeBtn').onclick=()=>{show('hud');if(AC)AC.resume();let n=3;bigText('3');clearInterval(resumeT);resumeT=setInterval(()=>{n--;if(n>0)bigText(String(n));else{clearInterval(resumeT);bigText('GO!');mode='play';}},600);};
-$('quitBtn').onclick=()=>{if(AC)AC.resume();R.alive=false;R.dead=0;mode='play';show('hud');gameOver();};
+$('resumeBtn').onclick=()=>{show('hud');if(AC)AC.resume();if(songEl&&songEl._resume){songEl._resume=false;songEl.play().catch(()=>{});}let n=3;bigText('3');clearInterval(resumeT);resumeT=setInterval(()=>{n--;if(n>0)bigText(String(n));else{clearInterval(resumeT);bigText('GO!');mode='play';}},600);};
+$('quitBtn').onclick=()=>{if(AC)AC.resume();if(songEl&&songEl._resume){songEl._resume=false;songEl.play().catch(()=>{});}R.alive=false;R.dead=0;mode='play';show('hud');gameOver();};
 $('pauseBtn').onclick=e=>{e.stopPropagation();pauseGame();};
 function toMenu(){cine(false);mode='menu';{const old=R;clearObjs(old);R=newWorld();R.scen=old.scen;R.nextScen=old.nextScen;R.gantry=old.gantry;R.bill=old.bill;}refreshMenu();show('menu');}
 $('playBtn').onclick=startRun;$('againBtn').onclick=startRun;
@@ -1352,7 +1353,11 @@ $('studioBtn').onclick=()=>openStudio('studio');$('shopBtn').onclick=()=>openStu
 $('oMenu').onclick=toMenu;$('sBack').onclick=()=>{sfxClick();toMenu();};
 $('hudMute').onclick=e=>{e.stopPropagation();initAudio();setMuted(!S.muted);};
 $('hBoards').onclick=e=>{e.stopPropagation();act('board');};
-$('nowplaying').onclick=e=>{e.stopPropagation();let n=S.track;do{n=(n+1)%TRACKS.length;}while(!trackUnlocked(n));S.track=n;if(S.musicOn)playTrack(n);save();if(S.studio.speakers===0)toastQuick('Upgrade Studio Monitors for more beats');};
+$('nowplaying').onclick=e=>{e.stopPropagation();initAudio();
+  const list=[...SONGS.filter(songOk).map(x=>({k:'song',id:x.id})),...TRACKS.map((t,i)=>({k:'beat',id:i})).filter(x=>trackUnlocked(x.id))];
+  let i=list.findIndex(x=>S.musicKind==='beat'?(x.k==='beat'&&x.id===S.track):(x.k==='song'&&x.id===(curSong||S.song)));
+  const n=list[(i+1)%list.length];S.musicOn=true;if(musicBus)musicBus.gain.value=.72;
+  if(n.k==='song')playSong(n.id);else{S.track=n.id;playTrack(n.id);}save();};
 setMuted(S.muted);
 
 // character select
@@ -1361,7 +1366,7 @@ function refreshChar(anim){const c=CHARS.find(x=>x.id===S.char)||CHARS[0];const 
 function switchChar(d){const i=CHARS.findIndex(x=>x.id===S.char);S.char=CHARS[(i+d+CHARS.length)%CHARS.length].id;applyLook();refreshChar(true);sfxClick();save();
   const c=CHARS.find(x=>x.id===S.char);
   if(c.tribute){const ti=TRACKS.findIndex(t=>t.tribute);S.track=ti;initAudio();if(S.musicOn)playTrack(ti);toastQuick('🕯️ Playing as a legend');}
-  else{if(TRACKS[S.track].tribute){S.track=0;if(S.musicOn&&AC)playTrack(0);}}
+  else{if(S.musicKind==='beat'&&TRACKS[S.track].tribute){S.track=0;if(S.musicOn&&AC)playSong(S.song||'going-down');}}
   burst(W/2,360,LOOK.glow||'#ffd23f',26,260);fovKick-=6;}
 $('chPrev').onclick=()=>switchChar(-1);$('chNext').onclick=()=>switchChar(1);
 function tributeHTML(){return `<div class="candle">🕯️</div><h2>IN MEMORY</h2><div class="years">FRESH KID ICE<br><span style="font-size:15px;color:#fff">Christopher Wong Won · 1964 – 2017</span></div>
@@ -1392,7 +1397,7 @@ $('setBtn').onclick=()=>{
     <div style="font-size:12px;opacity:.65;margin-top:8px">${installEvt?'':'To install on iPhone: tap Share → “Add to Home Screen”.'}</div>
     <div style="font-size:12.5px;opacity:.7;line-height:1.6;margin-top:12px">Controls: swipe or arrow keys. ↑ jump, ↓ roll, ←→ change lanes. Double-tap or Space rides a FAME Board, which saves you from one crash for 30s.<br>Turn off high-quality graphics if the game stutters on your phone.</div></div>`);
   $('tgSound').onclick=e=>{initAudio();setMuted(!S.muted);e.target.classList.toggle('on',!S.muted);};
-  $('tgMusic').onclick=e=>{initAudio();S.musicOn=!S.musicOn;if(musicBus)musicBus.gain.value=S.musicOn?.72:0;if(S.musicOn&&curTrack<0)playTrack(S.track);e.target.classList.toggle('on',S.musicOn);save();};
+  $('tgMusic').onclick=e=>{initAudio();S.musicOn=!S.musicOn;if(musicBus)musicBus.gain.value=S.musicOn?.72:0;if(S.musicOn)startMusic();e.target.classList.toggle('on',S.musicOn);save();};
   $('tgVib').onclick=e=>{S.vib=S.vib===false;e.target.classList.toggle('on',S.vib!==false);save();buzz(30);};
   $('storyBtn').onclick=()=>{toMenu();playStory(()=>{});};
   if($('installBtn'))$('installBtn').onclick=async()=>{installEvt.prompt();try{await installEvt.userChoice;}catch(e){}installEvt=null;toMenu();};
@@ -1403,7 +1408,7 @@ $('setBtn').onclick=()=>{
 let curTab='studio';
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{sfxClick();curTab=b.dataset.tab;syncTabs();renderTab(true);});
 function syncTabs(){document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.tab===curTab));}
-function openStudio(tab){initAudio();if(curTrack<0&&S.musicOn)playTrack(S.track);sfxClick();curTab=tab||'studio';syncTabs();mode='studio';show('studio');renderTab(true);}
+function openStudio(tab){initAudio();startMusic();sfxClick();curTab=tab||'studio';syncTabs();mode='studio';show('studio');renderTab(true);}
 const coinBtn=(cost,label,id,dis)=>`<button class="btn sm costbtn" data-act="${id}" ${dis?'disabled':''}>${label?label+' ':''}<i class="coin"></i>${fmt(cost)}</button>`;
 const pips=(l,m)=>'<div class="pips">'+[...Array(m)].map((_,i)=>`<i class="${i<l?'f':''}"></i>`).join('')+'</div>';
 function renderTab(anim){
@@ -1439,13 +1444,16 @@ function renderTab(anim){
     h+=`<div class="section">FREESTYLE FLOW · ride the beat</div><div class="fact" style="margin-bottom:10px">Tap the lanes as the notes hit the line — <b>KICK</b>, <b>SNARE</b>, <b>HAT</b>. “Flow” is how your words ride the beat: rappers land key syllables on the kick and snare. Keys: A S D or ← ↓ →.</div>
       <canvas id="flowc" width="440" height="420"></canvas>
       <div class="row" style="margin-top:10px"><button class="btn" data-act="flow:go" id="flowGo">🎙️ START 8 BARS</button></div>
-      <div class="fact" style="text-align:center;margin-top:8px">Best: ${S.flowBest} hits · Beat: ${TRACKS[S.track].name} (${TRACKS[S.track].bpm} BPM) — switch beats in the Music tab</div>`;
+      <div class="fact" style="text-align:center;margin-top:8px">Best: ${S.flowBest} hits · Flow plays a studio beat: ${TRACKS[S.track].name} (${TRACKS[S.track].bpm} BPM) — change it in the Music tab</div>`;
   }else if(curTab==='music'){
     h+=`<div class="section">🎧 FAME RADIO · Fame Faiella’s real music</div><div class="radio">${RADIO_CUR?`<iframe src="https://www.youtube-nocookie.com/embed/${RADIO_CUR}?autoplay=1&playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Fame Radio"></iframe>`:'<div class="fact">Pick a release to stream it here. The game beats pause while Fame Radio plays.</div>'}
       <div class="chips">${RADIO.map(r=>`<button class="chip ${RADIO_CUR===r.id?'on':''}" data-act="radio:${r.id}">${r.t}</button>`).join('')}</div>
       <a href="https://music.youtube.com/channel/UCCB13_fPwMVF6R0VptvK0SQ" target="_blank" rel="noopener">Open Fame Faiella on YouTube Music ↗</a></div>`;
+    h+=`<div class="section">🎤 FAME FAIELLA · REAL TRACKS</div>`;
+    for(const sg of SONGS){const un=songOk(sg),on=S.musicKind==='song'&&(curSong||S.song)===sg.id&&musicPlaying();
+      h+=`<div class="card ${on?'track on':''}" ${sg.special?'style="border:1px solid rgba(255,90,90,.5);box-shadow:0 0 18px rgba(255,80,80,.18)"':''}><div class="ic">${un?(on?'🔊':(sg.special?'🔥':'🎤')):'🔒'}</div><div class="info"><b>${un||!sg.special?sg.name:'???'}</b><span class="lv">${sg.special?'SECRET':'FAME FAIELLA'}</span><p>${un?'Full song · beat-synced lights & on-beat jumps':'🔒 '+sg.how}</p></div>${un?(on?'<span style="font-weight:800;color:#ffd23f">PLAYING</span>':`<button class="btn sm" data-act="song:${sg.id}">Play</button>`):''}</div>`;}
     h+=`<div class="section">BEAT LIBRARY · upgrade Studio Monitors to unlock</div>`;
-    TRACKS.forEach((t,i)=>{const un=trackUnlocked(i),on=S.track===i;if(t.tribute)h+='<div class="section">🕯️ TRIBUTE</div>';
+    TRACKS.forEach((t,i)=>{const un=trackUnlocked(i),on=S.musicKind==='beat'&&S.track===i;if(t.tribute)h+='<div class="section">🕯️ TRIBUTE</div>';
       h+=`<div class="card ${on?'track on':''}"><div class="ic">${un?(on?'🔊':'🎵'):'🔒'}</div><div class="info"><b>${un?t.name:'Locked beat'}</b><span class="lv">${t.bpm} BPM</span><p>${t.style}${un?'':' · Monitors LV '+i}</p>${un?`<div class="fact">${t.fact}</div>`:''}</div>${un?(on?'<span style="font-weight:800;color:#ffd23f">PLAYING</span>':`<button class="btn sm" data-act="play:${i}">Play</button>`):''}</div>`;});
   }else if(curTab==='quiz'){
     const q=QUIZ[S.quiz%QUIZ.length];
@@ -1469,13 +1477,14 @@ function doAct(a,el){
   else if(k==='hit'){const ar=ARTISTS.find(x=>x.id===v),l=S.artists[v],c=hitCost(ar,l);if(S.coins<c)return;S.coins-=c;S.artists[v]++;yay();
     toast(`🔥 <b>${ar.name} dropped a hit!</b> Income up to ${fmt(artistRate(ar,l+1)*(1+.2*S.studio.decor))}/min.${Math.random()<.5?'<br><br>🎓 '+pick(ARTIST_TIPS):''}`);}
   else if(k==='pu'){const l=S.pu[v],c=Math.round(300*Math.pow(1.9,l));if(S.coins<c||l>=5)return;S.coins-=c;S.pu[v]++;yay();}
-  else if(k==='radio'){S.musicOn=false;if(musicBus)musicBus.gain.value=0;RADIO_CUR=v;sfxClick();}
+  else if(k==='radio'){stopSong();curTrack=-1;S.musicOn=false;if(musicBus)musicBus.gain.value=0;RADIO_CUR=v;sfxClick();}
   else if(k==='flow'){flowStart();return;}
   else if(k==='buy'){const price={board1:250,board5:1000,hype:400}[v];if(S.coins<price)return;S.coins-=price;if(v==='board1')S.boards++;else if(v==='board5')S.boards+=5;else S.hype++;yay();}
   else if(k==='outfit'){const o=OUTFITS.find(x=>x.id===v);if(S.coins<o.cost)return;S.coins-=o.cost;S.owned.push(v);S.outfit=v;applyLook();yay();confetti(30);toast(`👕 <b>${o.name}</b> unlocked and equipped!`);}
   else if(k==='wear'){S.outfit=v;applyLook();sfxClick();}
   else if(k==='deck'){const d=DECKS.find(x=>x.id===v);if(S.coins<d.cost)return;S.coins-=d.cost;S.decks.push(v);S.deck=v;applyLook();yay();}
   else if(k==='ride'){S.deck=v;applyLook();sfxClick();}
+  else if(k==='song'){RADIO_CUR=null;S.musicOn=true;if(musicBus)musicBus.gain.value=.72;playSong(v);}
   else if(k==='play'){RADIO_CUR=null;S.track=+v;S.musicOn=true;if(musicBus)musicBus.gain.value=.72;playTrack(+v);}
   else if(k==='q'){
     const q=QUIZ[S.quiz%QUIZ.length],i=+v;const opts=$('tabbody').querySelectorAll('.qopt');
@@ -1484,7 +1493,7 @@ function doAct(a,el){
     S.quiz++;save();$('sCoins').textContent=fmt(S.coins);setTimeout(()=>{if(curTab==='quiz'&&mode==='studio')renderTab(true);},1300);return;
   }
   if(k==='radio')S.flags.radio=true;
-  save();checkAch();const st=$('tabbody').scrollTop;renderTab(false);$('tabbody').scrollTop=st;
+  save();checkAch();checkSongUnlocks();const st=$('tabbody').scrollTop;renderTab(false);$('tabbody').scrollTop=st;
 }
 
 
@@ -1494,8 +1503,8 @@ function doAct(a,el){
 // ===================================================================
 function buzz(ms){if(S.vib===false)return;try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}}
 // ---- on-beat jumps ----
-function beatJump(){if(!AC||curTrack<0||!S.musicOn||S.muted)return;const bl=60/TRACKS[curTrack].bpm,now=AC.currentTime;const ph=((now-lastBeat)%bl+bl)%bl;
-  if(Math.min(ph,bl-ph)<.09){const b=50*S.mult;R.score+=b;R.beats++;S.beatsTotal=(S.beatsTotal||0)+1;toastQuick('🎵 ON BEAT! +'+b);buzz(15);const p=P(R.x,R.y+1.2,PZ);burst(p.x,p.y,'#ffd23f',14,220);fovKick+=2;}}
+function beatJump(){if(!AC||!S.musicOn||S.muted)return;let hit=false;if(curTrack>=0){const bl=60/TRACKS[curTrack].bpm,now=AC.currentTime;const ph=((now-lastBeat)%bl+bl)%bl;hit=Math.min(ph,bl-ph)<.09;}else hit=songOnBeat();
+  if(hit){const b=50*S.mult;R.score+=b;R.beats++;S.beatsTotal=(S.beatsTotal||0)+1;toastQuick('🎵 ON BEAT! +'+b);buzz(15);const p=P(R.x,R.y+1.2,PZ);burst(p.x,p.y,'#ffd23f',14,220);fovKick+=2;}}
 // ---- paparazzi ----
 const PAPS=[];
 function buildPap(side){const g=new THREE.Group();const suit=mat('#23202c',{r:.7}),skin=mat('#d8a47c',{r:.6});
@@ -1549,7 +1558,7 @@ let RADIO_CUR=null;
 let FLOW=null,FLOWRES=null;
 function flowStart(){
   initAudio();if(!AC)return;RADIO_CUR=null;
-  if(curTrack<0||!S.musicOn){S.musicOn=true;if(musicBus)musicBus.gain.value=.72;playTrack(S.track);}
+  if(curTrack<0||!S.musicOn){S.musicOn=true;if(musicBus)musicBus.gain.value=.72;playTrack(TRACKS[S.track]&&trackUnlocked(S.track)?S.track:0);toastQuick('Flow uses the studio beats');}
   const T0=TRACKS[curTrack],sd=60/T0.bpm/4;
   let tb=nextT+((16-step)%16)*sd;while(tb-AC.currentTime<1.6)tb+=16*sd;
   const notes=[];
@@ -1581,9 +1590,9 @@ function drawFlow(dt){
     g.font='600 14px Outfit, sans-serif';g.fillText('Notes fall in time with the beat — tap as they cross the line',w/2,h*.42+30);}
 }
 // ---- story intro ----
-const STORY=[['CAPE CORAL, FLORIDA.','Between the canals and the palm trees…'],['ONE KID. ONE MIC. ONE DREAM.','Colin “Fame” Faiella'],['A LEGEND SHOWED HIM THE WAY.','Fresh Kid Ice · 1964 – 2017'],['NOW IT’S YOUR RUN.','Stack coins. Build FAME RECORDS. Become an empire.']];
+const STORY=[['CAPE CORAL, FLORIDA.','Between the canals and the palm trees…'],['ONE KID. ONE MIC. ONE DREAM.','Colin “Fame” Faiella'],['A LEGEND SHOWED HIM THE WAY.','Fresh Kid Ice · 1964 – 2017'],['NOW IT’S YOUR RUN.','Stack coins. Build FAME RECORDS. Become an empire.'],['♪ “GOING DOWN”','Fame Faiella']];
 function playStory(done){
-  initAudio();if(curTrack<0&&S.musicOn)playTrack(S.track);
+  initAudio();startMusic();
   const el=$('story');let i=-1,t=null;cine(true);show('none');el.classList.add('on');
   const next=()=>{clearTimeout(t);i++;if(i>=STORY.length){el.classList.remove('on','show');el.onclick=null;cine(false);mode='menu';show('menu');setTimeout(done,50);return;}
     el.classList.remove('show');setTimeout(()=>{el.querySelector('h3').textContent=STORY[i][0];el.querySelector('p').textContent=STORY[i][1];el.classList.add('show');fovKick-=4;sfxClick();},250);t=setTimeout(next,3000);};
@@ -1623,6 +1632,55 @@ let installEvt=null;
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;});
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 
+
+// ===================================================================
+// FAME FAIELLA — real tracks (MP3) with live beat detection
+// ===================================================================
+const SONGS=[
+ {id:'going-down',name:'Going Down',bpm:138,unlock:null,how:'Unlocked from the start'},
+ {id:'dont-call-me',name:'Don’t Call Me',bpm:125,unlock:()=>S.studio.speakers>=1,how:'Studio Monitors LV 1'},
+ {id:'im-on',name:'I’m On',bpm:80,unlock:()=>S.studio.speakers>=2,how:'Studio Monitors LV 2'},
+ {id:'flavors',name:'Flavors',bpm:98.5,unlock:()=>S.studio.speakers>=3,how:'Studio Monitors LV 3'},
+ {id:'running-back',name:'Running Back',bpm:125,unlock:()=>S.studio.speakers>=4,how:'Studio Monitors LV 4'},
+ {id:'never-quit-never-surrender',name:'Never Quit Never Surrender',bpm:142,unlock:()=>S.best>=2000||!!(S.songsUnlocked||{})['never-quit-never-surrender'],how:'Don’t surrender: run 2,000m in one run',special:true},
+];
+const songOk=sg=>!sg.unlock||sg.unlock();
+let songEl=null,songSrc=null,songAn=null,songBuf=null,curSong=null,songAvg=0,lastKick=0,kickGap=.45;
+function ensureSongEl(){
+  if(songEl)return;initAudio();if(!AC)return;
+  songEl=new Audio();songEl.preload='auto';songEl.setAttribute('playsinline','');
+  songEl.addEventListener('ended',()=>{const ok=SONGS.filter(songOk);const i=ok.findIndex(x=>x.id===curSong);playSong(ok[(i+1)%ok.length].id);});
+  try{songSrc=AC.createMediaElementSource(songEl);songAn=AC.createAnalyser();songAn.fftSize=1024;songAn.smoothingTimeConstant=.25;songSrc.connect(songAn);songSrc.connect(musicBus);songBuf=new Uint8Array(songAn.frequencyBinCount);}catch(e){}
+}
+function stopSong(){if(songEl&&!songEl.paused)songEl.pause();curSong=null;}
+function playSong(id){
+  ensureSongEl();if(!songEl)return;
+  const sg=SONGS.find(x=>x.id===id)||SONGS[0];
+  curTrack=-1;BEATQ=[];KICKQ=[];
+  if(curSong!==sg.id){songEl.src='music/'+sg.id+'.mp3';curSong=sg.id;}
+  S.musicKind='song';S.song=sg.id;
+  const pr=songEl.play();if(pr&&pr.catch)pr.catch(()=>{});
+  $('nowplaying').textContent='♪ Fame Faiella — '+sg.name+'  ⏭';
+}
+function musicPlaying(){return curTrack>=0||(songEl&&!songEl.paused);}
+function startMusic(){if(!S.musicOn||musicPlaying())return;if(S.musicKind==='beat')playTrack(S.track);else playSong(S.song||'going-down');}
+// live kick detection from the song's low end
+function songBeat(){
+  if(!songAn||!songEl||songEl.paused||!S.musicOn||S.muted)return;
+  songAn.getByteFrequencyData(songBuf);
+  let e=0;for(let i=1;i<6;i++)e+=songBuf[i];e/=5;
+  songAvg=songAvg*.93+e*.07;
+  const now=AC.currentTime;
+  if(e>songAvg*1.13&&e>105&&now-lastKick>.26){const gap=now-lastKick;if(gap<1.2)kickGap=kickGap*.8+gap*.2;lastKick=now;lastBeat=now;beatPulse=1;}
+}
+function songOnBeat(){if(!songEl||songEl.paused)return false;const now=AC.currentTime;const since=now-lastKick,until=lastKick+kickGap-now;return since<.11||(until>=0&&until<.1);}
+function checkSongUnlocks(){
+  S.songsUnlocked=S.songsUnlocked||{};
+  for(const sg of SONGS){if(sg.unlock&&!S.songsUnlocked[sg.id]&&sg.unlock()){S.songsUnlocked[sg.id]=true;
+    toast(sg.special?`🔥 <b>NEVER SURRENDER.</b> You unlocked Fame Faiella’s “${sg.name}” — it’s yours in the Music tab.`:`🔓 <b>New Fame track unlocked:</b> “${sg.name}” — play it in the Music tab.`);sfxJingle();confetti(sg.special?80:30);}}
+  save();
+}
+
 // ---------- Idle income ----------
 (function offline(){
   const away=Math.min(4*3600,(Date.now()-S.last)/1000);const ipm=incomePerMin();
@@ -1632,9 +1690,9 @@ let idleAcc=0;
 setInterval(()=>{const ipm=incomePerMin();if(ipm<=0)return;idleAcc+=ipm/60;const whole=Math.floor(idleAcc);if(whole>0){idleAcc-=whole;S.coins+=whole;S.total+=whole;}
   if(mode==='menu')$('mCoins').textContent=fmt(S.coins);if(mode==='studio')$('sCoins').textContent=fmt(S.coins);},1000);
 setInterval(save,5000);
-function firstGesture(){initAudio();if(AC&&curTrack<0&&S.musicOn)playTrack(S.track);}
+function firstGesture(){initAudio();if(AC)startMusic();}
 addEventListener('pointerdown',firstGesture,true);addEventListener('keydown',firstGesture,true);addEventListener('touchend',firstGesture,true);
-document.addEventListener('visibilitychange',()=>{if(document.hidden){save();if(mode==='play')pauseGame();if(AC)AC.suspend();}else if(AC&&mode!=='pause')AC.resume();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){save();if(songEl&&!songEl.paused&&mode!=='play'){songEl.pause();songEl._bg=true;}if(mode==='play')pauseGame();if(AC)AC.suspend();}else if(AC&&mode!=='pause'){AC.resume();if(songEl&&songEl._bg){songEl._bg=false;songEl.play().catch(()=>{});}}});
 
 // ---------- HUD ----------
 function updatePups(){
@@ -1657,7 +1715,7 @@ function loop(now){
 computePal(0);refreshMenu();refreshChar(false);setTimeout(()=>$('fade').classList.add('off'),80);
 if(S.runs===0)setTimeout(()=>mode==='menu'&&toast('🎤 <b>Welcome to Fame the Game!</b> Run the tracks, stack coins, then build Fame Records into an empire. You start with 3 FAME Boards — double-tap to ride.'),2600);
 window.__fameOK=true;
-window.dbg={get R(){return R},get S(){return S},get mode(){return mode},grabPup,camera,renderer,get pal(){return pal}};
+window.dbg={get R(){return R},get S(){return S},get mode(){return mode},grabPup,camera,renderer,get pal(){return pal},get song(){return songEl},get kick(){return lastKick},get kickGap(){return kickGap}};
 requestAnimationFrame(loop);
 </script>
 </body>
